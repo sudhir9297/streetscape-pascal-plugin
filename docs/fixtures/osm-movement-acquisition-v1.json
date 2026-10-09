@@ -1,0 +1,119 @@
+{
+  "format": "osm-acquisition",
+  "schemaVersion": 1,
+  "bbox": {
+    "south": -0.01,
+    "west": -0.01,
+    "north": 0.01,
+    "east": 0.01
+  },
+  "responses": [
+    {
+      "bbox": {
+        "south": -0.01,
+        "west": -0.01,
+        "north": 0.01,
+        "east": 0.01
+      },
+      "payload": {
+        "elements": [
+          {
+            "type": "way",
+            "id": 10,
+            "nodes": [
+              1,
+              2
+            ],
+            "geometry": [
+              {
+                "lat": 0,
+                "lon": -0.0005
+              },
+              {
+                "lat": 0,
+                "lon": 0
+              }
+            ],
+            "tags": {
+              "highway": "residential",
+              "lanes": "2",
+              "oneway": "yes"
+            }
+          },
+          {
+            "type": "way",
+            "id": 20,
+            "nodes": [
+              2,
+              3
+            ],
+            "geometry": [
+              {
+                "lat": 0,
+                "lon": 0
+              },
+              {
+                "lat": 0.0005,
+                "lon": 0
+              }
+            ],
+            "tags": {
+              "highway": "residential",
+              "lanes": "2",
+              "oneway": "yes"
+            }
+          },
+          {
+            "type": "way",
+            "id": 30,
+            "nodes": [
+              2,
+              4
+            ],
+            "geometry": [
+              {
+                "lat": 0,
+                "lon": 0
+              },
+              {
+                "lat": 0,
+                "lon": 0.0005
+              }
+            ],
+            "tags": {
+              "highway": "residential",
+              "lanes": "2",
+              "oneway": "yes"
+            }
+          },
+          {
+            "type": "relation",
+            "id": 100,
+            "tags": {
+              "type": "restriction",
+              "restriction": "no_right_turn"
+            },
+            "members": [
+              {
+                "type": "way",
+                "ref": 10,
+                "role": "from"
+              },
+              {
+                "type": "node",
+                "ref": 2,
+                "role": "via"
+              },
+              {
+                "type": "way",
+                "ref": 20,
+                "role": "to"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "diagnostics": []
+}

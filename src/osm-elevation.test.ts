@@ -81,6 +81,7 @@ describe('TerrainSampler', () => {
 		expect(sampler.failedTiles).toBeGreaterThan(0)
 		expect(sampler.hasElevationAt({ lat: 0, lon: 0 })).toBe(false)
 		expect(sampler.elevationAt({ lat: 0, lon: 0 })).toBe(0)
+		expect(sampler.sampleElevationAt({ lat: 0, lon: 0 })).toBeNull()
 	})
 
 	test('fetches each covering tile exactly once', async () => {
@@ -109,3 +110,10 @@ describe('TerrainSampler', () => {
 		})
 	})
 })
+
+ test('measured sea level is distinct from a missing terrain sample', async () => {
+ const sampler = new TerrainSampler(15, async () => ({width:1,height:1,elevations:new Float32Array([0])}))
+ await sampler.prefetch({south:-0.001,west:-0.001,north:0.001,east:0.001})
+ expect(sampler.sampleElevationAt({lat:0,lon:0})).toBe(0)
+ expect(sampler.sampleElevationAt({lat:10,lon:10})).toBeNull()
+ })

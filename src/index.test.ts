@@ -252,6 +252,7 @@ describe('Streetscape plugin manifest', () => {
     const keys = groups.flatMap((group) => group.fields.map((field) => field.key))
 
 		expect(labels).toEqual([
+			'Baseline correction',
 			'Style',
 			'Roadside',
 			'Terrain',

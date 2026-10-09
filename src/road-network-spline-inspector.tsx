@@ -11,6 +11,18 @@ import {
 } from "./road-network-spline-handles";
 import type { RoadNetworkNode } from "./schema";
 import { useStreetscapeStore } from "./store";
+import { createElement } from "react";
+import { commitRoadGeometryEdit } from "./road-edit-commit";
+
+/** Host inspector entry point shares the command path with Canvas controls. */
+export function RoadSplineCommandEditor(
+	props: Parameters<typeof RoadSplinePointEditor>[0],
+) {
+	return createElement(RoadSplinePointEditor, {
+		...props,
+		onUpdate: (patch) => commitRoadGeometryEdit(props.node, patch),
+	});
+}
 
 export function RoadSplinePointEditor({
 	node,

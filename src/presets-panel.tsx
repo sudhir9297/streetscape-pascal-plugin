@@ -58,6 +58,7 @@ import { MapImportSection } from './map-import-panel'
 import { exportRoadNetworkGraph, importRoadNetworkGraph } from './road-network-io'
 import { planRoadGraphCleanup, type RoadCleanupPlan } from './road-network-cleanup'
 import { deleteRoadSplinePoints } from './road-network-spline-handles'
+import { commitRoadGeometryEdit } from './road-edit-commit'
 import {
   DEFAULT_ROAD_STYLE_PRESETS,
   ROAD_STYLE_PRESET_IDS,
@@ -456,7 +457,7 @@ export default function StreetscapePanel() {
       const patch = deleteRoadSplinePoints(selectedRoadNetwork, roadElementSelection.id, indices)
       if (!patch) return
       event.preventDefault()
-      useScene.getState().updateNode(selectedRoadNetwork.id as AnyNodeId, patch as Partial<AnyNode>)
+      commitRoadGeometryEdit(selectedRoadNetwork, patch)
       useStreetscapeStore.getState().setRoadElementSelection({
         networkId: selectedRoadNetwork.id, kind: 'spline', id: selectedRoadNetwork.id,
       })

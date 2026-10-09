@@ -75,7 +75,7 @@ describe('road editing control visibility', () => {
       'utf8',
     )
     const rendererSource = readFileSync(
-      new URL('./road-network-renderer.tsx', import.meta.url),
+      new URL('./plugin-lifecycle.ts', import.meta.url),
       'utf8',
     )
     const extensionSource = readFileSync(
@@ -83,8 +83,8 @@ describe('road editing control visibility', () => {
       'utf8',
     )
     expect(affordanceSource).toContain('moveRoadGraphNode(node, graphNodeId')
-    expect(rendererSource).toContain('deleteRoadEdge(node, elementSelection.id)')
-    expect(rendererSource).toContain("window.addEventListener('keydown', onDeleteEdge, true)")
+    expect(rendererSource).toContain('commitRoadEdgeDeletion(parsed.data, selection.id)')
+    expect(rendererSource).toMatch(/window\.addEventListener\(["']keydown["'], onDeleteEdge, true\)/)
     expect(rendererSource).toContain('event.stopImmediatePropagation()')
     expect(extensionSource).toContain('moveRoadGraphNode(node, graphNodeId')
   })

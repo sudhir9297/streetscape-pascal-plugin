@@ -1,0 +1,15 @@
+{
+  "sceneId": "48a682c9e814",
+  "scenarioName": "Walking and cycling",
+  "createdThroughUi": true,
+  "widthEditedThroughUi": true,
+  "reopenedDesignWidth": 3,
+  "reopenedCyclingWidth": 2,
+  "baselineSwitch": {
+    "mode": "baseline",
+    "sidewalkWidth": 2,
+    "cyclingAbsent": true
+  },
+  "scenarioSwitchRestored": true,
+  "lightPreview": true
+}

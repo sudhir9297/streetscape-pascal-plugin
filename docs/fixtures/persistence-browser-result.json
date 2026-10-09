@@ -1,0 +1,13 @@
+{
+  "accepted": 1.8,
+  "baselines": [
+    "baseline-original",
+    "baseline-corrected"
+  ],
+  "design": 2.4,
+  "pass": true,
+  "projectId": "persistence-browser-check",
+  "projectionProblems": [],
+  "source": 1.5,
+  "url": "http://localhost:3002/scene/6b510e11b44d"
+}

@@ -130,6 +130,20 @@ describe('road network topology', () => {
     expect(Object.keys(joined.graph.edges)).toHaveLength(3)
   })
 
+  test('merges conflicting style identities without changing either authored width', () => {
+    const first = insertRoadSegment(createEmptyRoadGraph(), [0, 0, 0], [10, 0, 0]).graph
+    const second = insertRoadSegment(createEmptyRoadGraph(), [20, 0, 0], [30, 0, 0]).graph
+    const styleId = first.activeStyleId
+    second.stylePresets = {...second.stylePresets, [styleId]: {...second.stylePresets[styleId]!, laneWidth: 5}}
+    const merged = mergeRoadGraphs([first, second])
+    const firstEdge = merged.graph.edges[Object.values(merged.edgeIdMaps[0]!)[0]!]!
+    const secondEdge = merged.graph.edges[Object.values(merged.edgeIdMaps[1]!)[0]!]!
+    expect(firstEdge.styleId).not.toBe(secondEdge.styleId)
+    expect(merged.graph.stylePresets[firstEdge.styleId]!.laneWidth).toBe(first.stylePresets[styleId]!.laneWidth)
+    expect(merged.graph.stylePresets[secondEdge.styleId]!.laneWidth).toBe(5)
+    expect(merged.styleIdMaps[1]![styleId]).toBe(secondEdge.styleId)
+  })
+
   test('creates a two-node straight road with the expected cross-section width', () => {
     const result = insertRoadSegment(createEmptyRoadGraph(), [0, 0, 0], [10, 0, 0])
     expect(result.status).toBe('inserted')

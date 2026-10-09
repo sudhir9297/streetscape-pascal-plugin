@@ -1,0 +1,55 @@
+{
+  "checks": [
+    {
+      "name": "Gate G1 repeated snapshot replay is identical and offline",
+      "pass": true
+    },
+    {
+      "name": "sparse dimensions remain estimates with raw contradictory width",
+      "pass": true
+    },
+    {
+      "name": "semantic document and scene projection share one undo entry",
+      "pass": true
+    },
+    {
+      "name": "authored road and attached lamp retain their full effective values",
+      "pass": true
+    },
+    {
+      "name": "baseline document is retained by root site",
+      "pass": true
+    },
+    {
+      "name": "Map exposes inspectable baseline document",
+      "pass": true
+    },
+    {
+      "name": "authored conversion has no fabricated source or geographic frame",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "embedded snapshot verifies after hydration",
+      "pass": true
+    },
+    {
+      "name": "semantic identity, values and diagnostics survive server persistence",
+      "pass": true
+    },
+    {
+      "name": "authored road remains editable through renderer adapter",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "sceneId": "029face4ef3e",
+  "url": "http://localhost:3002/"
+}

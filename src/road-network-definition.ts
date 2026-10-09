@@ -408,6 +408,7 @@ export const roadNetworkDefinition: RoadNetworkDefinition = {
 				...(old as Record<string, unknown>),
 				roadsideAutoFillEnabled: false,
 				roadsideItemSuppressed: {},
+ generatedItemHistory: {},
 			};
 		},
 		33: (old: unknown) => {
@@ -436,6 +437,7 @@ export const roadNetworkDefinition: RoadNetworkDefinition = {
 		roadsideDecorationSuppressed: {},
 		roadsideAutoFillEnabled: false,
 		roadsideItemSuppressed: {},
+ generatedItemHistory: {},
 		attachments: {},
 		junctions: {},
 		osmMappedSurfaces: [],

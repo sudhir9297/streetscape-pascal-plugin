@@ -1,0 +1,66 @@
+{
+  "checks": [
+    {
+      "name": "road creation prepares without any persistent writes",
+      "pass": true
+    },
+    {
+      "name": "road creation is one undo action",
+      "pass": true
+    },
+    {
+      "name": "creation advances the accepted document and adds its road binding",
+      "pass": true
+    },
+    {
+      "name": "intersection planning leaves the accepted road untouched",
+      "pass": true
+    },
+    {
+      "name": "crossing includes explicit edge lineage remaps",
+      "pass": true
+    },
+    {
+      "name": "crossing creates four edges in one undo action",
+      "pass": true
+    },
+    {
+      "name": "crossing advances the accepted document in the same action",
+      "pass": true
+    },
+    {
+      "name": "historical accepted revisions remain exact",
+      "pass": true
+    },
+    {
+      "name": "accepted document compiles all four crossing edges",
+      "pass": true
+    },
+    {
+      "name": "one undo restores the complete unsplit road",
+      "pass": true
+    },
+    {
+      "name": "stale creation plan cannot overwrite a newer edit",
+      "pass": true
+    },
+    {
+      "name": "last-edge deletion prepares without changing scene or document",
+      "pass": true
+    },
+    {
+      "name": "last-edge deletion removes scene node and accepted road binding together",
+      "pass": true
+    },
+    {
+      "name": "last-edge deletion has one undo entry",
+      "pass": true
+    },
+    {
+      "name": "undo restores deleted road and accepted document",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "url": "http://localhost:3002/"
+}

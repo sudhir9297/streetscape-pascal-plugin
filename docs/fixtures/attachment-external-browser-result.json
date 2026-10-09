@@ -1,0 +1,25 @@
+{
+  "pass": true,
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step24-qa",
+  "checks": [
+    {"name":"no scene Canvas is mounted (hidden FPS instrumentation excluded)","pass":true},
+    {"name":"generic asset edit retains adjusted station","pass":true},
+    {"name":"asset edit is one undo entry","pass":true},
+    {"name":"generic edge removal splits disconnected components","pass":true},
+    {"name":"adjusted asset ownership and station survive split","pass":true},
+    {"name":"asset reverse reference follows component owner","pass":true},
+    {"name":"document has two road bindings and one revision per edit","pass":true},
+    {"name":"historical accepted baseline stays exact","pass":true},
+    {"name":"split is one additional undo entry","pass":true},
+    {"name":"split undo restores graph assets and document","pass":true},
+    {"name":"asset move undo restores initial graph and document","pass":true}
+  ],
+  "actualInspectorChecks": {
+    "url": "http://localhost:3002/",
+    "generatedAssetsWith3DClosed": 5,
+    "asset": "Manhole cover",
+    "editIn2D": {"xBefore":0,"xAfter":3,"unchangedAfterMounting3D":true,"oneUndoRestoresX":0},
+    "editIn3D": {"xBefore":0,"xAfter":5,"unchangedAfterClosing3D":true}
+  }
+}

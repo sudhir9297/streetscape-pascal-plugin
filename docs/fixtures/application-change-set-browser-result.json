@@ -1,0 +1,47 @@
+{
+  "checks": [
+    {
+      "name": "invalid final import component leaves the complete graph and undo history untouched",
+      "pass": true
+    },
+    {
+      "name": "preparation does not mutate persistent graph",
+      "pass": true
+    },
+    {
+      "name": "valid change commits a selectable road in one undo entry",
+      "pass": true
+    },
+    {
+      "name": "undo restores the entire original graph",
+      "pass": true
+    },
+    {
+      "name": "delayed job cannot overwrite a newer edit",
+      "pass": true
+    },
+    {
+      "name": "document revision conflict rejects before mutation",
+      "pass": true
+    },
+    {
+      "name": "captured source evidence cannot be rewritten",
+      "pass": true
+    },
+    {
+      "name": "validated document update advances revision",
+      "pass": true
+    },
+    {
+      "name": "validated scene saves successfully",
+      "pass": true
+    },
+    {
+      "name": "server reload retains the newer edit and accepted revision",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "sceneId": "be7b8648cd2f",
+  "url": "http://localhost:3002/"
+}

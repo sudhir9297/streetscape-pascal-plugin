@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test'
 import { localToGeo, type OsmMappedSurface } from './osm-import'
 import { associateOsmCrossings, associateOsmMappedSurfaces } from './osm-road-corridors'
+import {resolveMappedInventory} from './osm-road-corridors'
+import {parseMappedInventoryReport} from './domain/mapped-inventory'
 import { insertRoadSegment, createEmptyRoadGraph } from './road-network-topology'
 
 const center = { lat: 40, lon: -73 }
@@ -21,6 +23,45 @@ function surface(id: number, z: number, tags: Record<string, string> = { highway
     })),
   }
 }
+
+test('ambiguous mapped corridors retain candidates and require an explicit choice',()=>{
+ const graphs=[straightRoad(0),straightRoad(8)],source=surface(90,4),before=JSON.stringify(source)
+ // Authored graph IDs can coincide across graphs; use distinct IDs like imports.
+ const second=graphs[1]!,edge=Object.values(second.edges)[0]!,old=edge.id
+ delete second.edges[old];edge.id='other-road';second.edges[edge.id]=edge
+ const resolved=resolveMappedInventory(graphs,[source],[],center,100,0)
+ const item=resolved.report.items[0]!
+ expect(item.status).toBe('pending');expect(item.candidates).toHaveLength(2)
+ expect(resolved.surfacesByGraph.flat()).toHaveLength(0)
+ const selected=resolveMappedInventory(graphs,[source],[],center,100,0,undefined,{[item.id]:item.candidates[1]!.id})
+ expect(selected.report.items[0]!.basis).toBe('manual')
+ expect(selected.surfacesByGraph[1]).toHaveLength(1)
+ expect(JSON.stringify(source)).toBe(before)
+ expect(parseMappedInventoryReport(JSON.stringify(selected.report))).toEqual(selected.report)
+})
+test('unmarked ground inventory cannot attach to a nearby bridge',()=>{
+ const graph=straightRoad(0);Object.values(graph.edges)[0]!.osmVertical={bridge:true,layer:1}
+ const resolved=resolveMappedInventory([graph],[surface(91,2)],[],center,100,0)
+ expect(resolved.surfacesByGraph[0]).toHaveLength(0)
+ expect(resolved.report.items[0]!.status).toBe('unmatched')
+ expect(resolved.report.items[0]!.source).toEqual(surface(91,2))
+ const crossings=resolveMappedInventory([graph],[],[{id:92,point:localToGeo([0,0],center),tags:{highway:'crossing'}}],center,100,0)
+ expect(crossings.crossingsByGraph[0]).toHaveLength(0)
+ expect(crossings.report.items[0]!.status).toBe('unmatched')
+})
+test('stale association choices remain pending instead of silently selecting another road',()=>{
+ const resolved=resolveMappedInventory([straightRoad(0)],[surface(93,2)],[],center,100,0,undefined,{'way~93~0':'removed-road'})
+ expect(resolved.report.items[0]!.status).toBe('pending')
+ expect(resolved.report.items[0]!.diagnostics.some(d=>d.includes('no longer available'))).toBe(true)
+ expect(resolved.surfacesByGraph[0]).toHaveLength(0)
+})
+test('mapped observations remain separate from procedural placement proposals',()=>{
+ const observation={kind:'street-lamp' as const,point:localToGeo([0,2],center),sourceId:'node/94',tags:{highway:'street_lamp'}}
+ const resolved=resolveMappedInventory([straightRoad(0)],[],[],center,100,0,undefined,undefined,[observation])
+ expect(resolved.report.items[0]!.kind).toBe('point-asset')
+ expect(resolved.report.items[0]!.source).toEqual(observation)
+ expect(resolved.report.items[0]!.diagnostics.join(' ')).toContain('Procedural placement proposals are not mapped observations')
+})
 
 test('associates a mapped sidewalk with the closest parallel road corridor', () => {
   const associations = associateOsmMappedSurfaces(

@@ -17,6 +17,7 @@ export const RoadNetworkSemanticGraph = RoadNetworkNode.pick({
 	roadsideDecorationSuppressed: true,
 	roadsideAutoFillEnabled: true,
 	roadsideItemSuppressed: true,
+  generatedItemHistory: true,
   attachments: true,
   junctions: true,
   stylePresets: true,

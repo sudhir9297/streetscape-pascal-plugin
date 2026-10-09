@@ -26,6 +26,7 @@ export type RoadMarkingPolygon = {
   edgeId: string
   junctionId?: string
   kind: RoadMarkingKind
+  movementIds?: string[]
   points: Array<readonly [number, number, number]>
 }
 
@@ -58,7 +59,7 @@ function interpolate(first: Point3, second: Point3, t: number): Point3 {
   ]
 }
 
-function pointAtDistance(points: Point3[], distance: number): PathSample | null {
+export function pointAtDistance(points: Point3[], distance: number): PathSample | null {
   let remaining = Math.max(0, distance)
   for (let index = 0; index < points.length - 1; index++) {
     const start = points[index]!
@@ -138,7 +139,7 @@ export function splitRoadMarkingDashes(
   return result
 }
 
-function ribbonPolygons(
+export function ribbonPolygons(
   points: Point3[],
   width: number,
   kind: RoadMarkingKind,
@@ -165,7 +166,7 @@ function ribbonPolygons(
   })
 }
 
-function orientedRectangle(
+export function orientedRectangle(
   sample: PathSample,
   centerOffset: number,
   width: number,
@@ -186,7 +187,7 @@ function orientedRectangle(
   ]
 }
 
-function arrowPolygons(
+export function arrowPolygons(
   sample: PathSample,
   lateralOffset: number,
   turns: RoadTurn[],
@@ -207,7 +208,7 @@ function arrowPolygons(
   return turnArrowPolygons(turns).map((polygon) => polygon.map(toWorld))
 }
 
-function yieldTeeth(sample: PathSample, centerOffset: number, width: number): Point3[][] {
+export function yieldTeeth(sample: PathSample, centerOffset: number, width: number): Point3[][] {
 	const outward = sample.direction
 	const left = [-outward[1], outward[0]] as const
 	const toothCount = Math.max(1, Math.floor(width / 0.9))

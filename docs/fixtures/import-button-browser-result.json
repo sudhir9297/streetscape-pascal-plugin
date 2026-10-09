@@ -1,0 +1,46 @@
+{
+  "floorplanNodes": 16,
+  "history": [
+    {
+      "keys": [
+        "nodes",
+        "rootNodeIds",
+        "collections",
+        "materials",
+        "installedPlugins",
+        "hasExplicitPluginInstallState"
+      ],
+      "roads": 1
+    },
+    {
+      "keys": [
+        "nodes",
+        "rootNodeIds",
+        "collections",
+        "materials",
+        "installedPlugins",
+        "hasExplicitPluginInstallState"
+      ],
+      "roads": 0
+    }
+  ],
+  "mappedObjects": 0,
+  "pass": true,
+  "roadSegments": 94,
+  "sceneId": "aed56aa830d1",
+  "status": 201,
+  "success": [
+    "Added 94 street segments and 6 mapped objects to this level. Use 2D or 3D to inspect them; Undo removes the import."
+  ],
+  "url": "http://localhost:3002/",
+  "checks": {
+    "drivingSideAndImportVisible": true,
+    "disabledUntilPolicyConfirmed": true,
+    "enabledAfterConfirmation": true,
+    "dialogClosesOnSuccess": true,
+    "sceneContains94Edges": true,
+    "latestUndoSnapshotContainsNoImportedRoads": true,
+    "fullSuiteTests": 665,
+    "typeScriptPassed": true
+  }
+}

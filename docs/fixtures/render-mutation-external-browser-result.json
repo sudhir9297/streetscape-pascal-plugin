@@ -1,0 +1,46 @@
+{
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step26-qa",
+  "commandChecks": {
+    "ok": true,
+    "checks": [
+      {
+        "name": "decoration inventory accepted in command",
+        "passed": true
+      },
+      {
+        "name": "generated asset visibility accepted in same command",
+        "passed": true
+      },
+      {
+        "name": "one accepted document revision",
+        "passed": true
+      },
+      {
+        "name": "one undo entry for furnishings and visibility",
+        "passed": true
+      },
+      {
+        "name": "repeat generation produces identical inventory",
+        "passed": true
+      },
+      {
+        "name": "undo restores exact scene and accepted document",
+        "passed": true
+      }
+    ]
+  },
+  "viewCheck": {
+    "actions": [
+      "select road in 3D",
+      "Escape deselect",
+      "switch 2D",
+      "select road in 2D",
+      "Escape deselect",
+      "switch 3D (renderer mount)"
+    ],
+    "unchanged": true,
+    "persistentWrites": 0,
+    "changes": []
+  }
+}

@@ -1,3 +1,5 @@
+import { GeneratedItemHistory } from "./domain/generated-item-history";
+import { StreetSectionLayout } from "./domain/street-section-layout"
 import { BaseNode, generateId, nodeType, objectId } from '@pascal-app/core'
 import { z } from 'zod'
 import { BOLLARD_LIGHT_DIMENSIONS } from './bollard-light-geometry'
@@ -809,6 +811,10 @@ export type SpeedHumpNode = z.infer<typeof SpeedHumpNode>
 /** A topological point shared by one or more road centerline edges. */
 const RoadGraphNodeSchema = z.object({
   id: z.string().min(1),
+  osmTopologyOrigin: z.discriminatedUnion('kind', [
+    z.object({kind:z.literal('source'), nodeId:z.number().int().positive()}),
+    z.object({kind:z.literal('derived'), reason:z.enum(['scope-boundary','simple-graph-adapter']), wayIds:z.array(z.number().int().positive())}),
+  ]).optional(),
   position: z.tuple([z.number(), z.number(), z.number()]),
   level: z.number().int().default(0),
   elevationMode: z.enum(['ground', 'bridge']).default('ground'),
@@ -898,6 +904,8 @@ export type RoadVerticalProfilePoint = z.infer<typeof RoadVerticalProfilePoint>
 
 /** One directed centerline edge. Direction controls traffic, not graph traversal. */
 const RoadGraphEdgeSchema = z.object({
+  /** Derived projection of the authoritative semantic section layout. */
+  sectionLayout: StreetSectionLayout.optional(),
   id: z.string().min(1),
   startNodeId: z.string().min(1),
   endNodeId: z.string().min(1),
@@ -930,6 +938,8 @@ const RoadGraphEdgeSchema = z.object({
     .object({
       wayId: z.number().int(),
       nodeIds: z.array(z.number().int()).optional(),
+      /** Fractional indices in nodeIds; geometry simplification does not erase source coverage. */
+      span: z.object({ start: z.number().nonnegative(), end: z.number().nonnegative(), coverage: z.enum(["exact", "conservative"]) }).refine(value => value.end >= value.start).optional(),
       tags: z.record(z.string(), z.string()),
     })
     .optional(),
@@ -951,6 +961,7 @@ export const RoadGraphEdge = z.preprocess(
 export type RoadGraphEdge = z.infer<typeof RoadGraphEdge>
 
 export const RoadsideDecoration = z.object({
+  legacyKey: z.string().min(1).optional(),
   id: z.string().min(1),
   edgeId: z.string().min(1),
   kind: z.enum(['lamp', 'sign']),
@@ -1067,6 +1078,7 @@ export const RoadNetworkNode = BaseNode.extend({
   roadsideAutoFillEnabled: z.boolean().default(false),
   /** Generated scene-asset keys explicitly removed by the user. */
   roadsideItemSuppressed: z.record(z.string(), z.boolean()).default({}),
+  generatedItemHistory: GeneratedItemHistory.default({}),
   attachments: z.record(z.string(), RoadEdgeAttachment).default({}),
   junctions: z.record(z.string(), RoadJunction).default({}),
   /** Supplemental OSM geometry in network-local coordinates, retained for surface reconstruction. */

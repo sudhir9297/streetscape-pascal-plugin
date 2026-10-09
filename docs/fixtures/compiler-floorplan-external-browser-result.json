@@ -1,0 +1,55 @@
+{
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step28-qa",
+  "ok": true,
+  "checks": [
+    {
+      "name": "selected and unselected footprints identical",
+      "passed": true
+    },
+    {
+      "name": "adapter preserves compiler input",
+      "passed": true
+    },
+    {
+      "name": "mapped junction island retained as hole",
+      "passed": true
+    },
+    {
+      "name": "junction asphalt excludes island center",
+      "passed": true
+    },
+    {
+      "name": "crosswalks remain at compiler positions",
+      "passed": true
+    },
+    {
+      "name": "road hit lines retained",
+      "passed": true
+    },
+    {
+      "name": "node handles retained",
+      "passed": true
+    },
+    {
+      "name": "unselected road has no editing handles",
+      "passed": true
+    }
+  ],
+  "realEditor": {
+    "url": "http://localhost:3002/streetscape-step26-qa",
+    "view": "2D",
+    "nodeHandleDrag": {
+      "from": [
+        1152,
+        438
+      ],
+      "to": [
+        1100,
+        438
+      ],
+      "visibleRoadFootprintChanged": true,
+      "oneUndoRestoredOriginalHandleAndFootprint": true
+    }
+  }
+}

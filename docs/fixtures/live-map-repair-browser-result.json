@@ -1,0 +1,13 @@
+{
+  "location": "Bengaluru",
+  "radiusMeters": 250,
+  "source": "OSM API 0.6 map.json",
+  "edges": 94,
+  "mappedObjects": 6,
+  "networks": 6,
+  "pass": true,
+  "saveStatus": 201,
+  "sceneId": "bff85da550cb",
+  "undoSteps": 1,
+  "workerMismatchGone": true
+}

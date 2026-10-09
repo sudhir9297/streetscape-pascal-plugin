@@ -7,6 +7,7 @@ import {
 	MAX_MAP_ZOOM,
 	MIN_MAP_ZOOM,
 	metersPerPixel,
+	mapSelectionRadiusPixels,
 	osmTileUrl,
 	tileOffsetFromCenter,
 	tileFractionToLatLon,
@@ -101,5 +102,20 @@ describe('tileOffsetFromCenter', () => {
 			8,
 		)
 		expect(Math.abs(offset.x)).toBeLessThan(1)
+	})
+})
+
+describe('map selection radius', () => {
+	test('matches the MapLibre world scale at fractional zoom', () => {
+		const latitude = 48.8738
+		const zoom = 14.4
+		const radius = 250
+		const projected = radius * 512 * 2 ** zoom / (40075016.686 * Math.cos(latitude * Math.PI / 180))
+		 expect(mapSelectionRadiusPixels(latitude, zoom, radius)).toBeCloseTo(projected, 8)
+	})
+	test('scales continuously with zoom and selected distance', () => {
+		const radius = mapSelectionRadiusPixels(51.5, 14, 100)
+		expect(mapSelectionRadiusPixels(51.5, 14.5, 100)).toBeCloseTo(radius * Math.SQRT2, 8)
+		expect(mapSelectionRadiusPixels(51.5, 14, 200)).toBeCloseTo(radius * 2, 8)
 	})
 })

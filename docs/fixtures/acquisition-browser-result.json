@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "name": "raw source tags unchanged",
+      "pass": true
+    },
+    {
+      "name": "interpretation remains compatible",
+      "pass": true
+    },
+    {
+      "name": "offline road and asset replay",
+      "pass": true
+    },
+    {
+      "name": "acquisition retained for later snapshot persistence",
+      "pass": true
+    },
+    {
+      "name": "invalid service data is not empty roads",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "requests": 1,
+  "url": "http://localhost:3002/"
+}

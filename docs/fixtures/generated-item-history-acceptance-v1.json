@@ -1,0 +1,18 @@
+{
+  "sceneId": "31a08dab91d0",
+  "saveStatus": 200,
+  "history": 23,
+  "movedId": "fire-hydrant_j4259jt97clpyi5v",
+  "deletedId": "fire-hydrant_olgddiqcu0qgqofm",
+  "movedPose": [
+    -25.830000000000002,
+    0.061,
+    -0.56
+  ],
+  "color": "#bb2244",
+  "deletedAbsent": true,
+  "suppression": "suppressed",
+  "regenerationCount": 0,
+  "projectRevision": 25,
+  "version": 3
+}

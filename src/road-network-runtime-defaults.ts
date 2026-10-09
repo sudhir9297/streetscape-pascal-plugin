@@ -19,6 +19,7 @@ const ROAD_RUNTIME_DEFAULT_KEYS = [
 	"roadsideDecorationSuppressed",
 	"roadsideAutoFillEnabled",
 	"roadsideItemSuppressed",
+	"generatedItemHistory",
 ] as const satisfies ReadonlyArray<keyof RoadNetworkNode>;
 
 /** Fill fields added after a local scene's road node was already mounted. */

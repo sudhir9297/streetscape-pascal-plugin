@@ -1,0 +1,36 @@
+{
+  "checks": [
+    {
+      "name": "acquires documented context margin",
+      "pass": true
+    },
+    {
+      "name": "boundary junction retains four context approaches",
+      "pass": true
+    },
+    {
+      "name": "generated centerlines remain selected",
+      "pass": true
+    },
+    {
+      "name": "support-only road excluded from generation",
+      "pass": true
+    },
+    {
+      "name": "preview shows context only outside selection",
+      "pass": true
+    },
+    {
+      "name": "completed import retains detached supporting topology",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "url": "http://localhost:3002/",
+  "liveDialog": {
+    "previewReady": true,
+    "contextLegendVisible": true,
+    "requests": 1,
+    "transport": "recorded OSM fixture"
+  }
+}

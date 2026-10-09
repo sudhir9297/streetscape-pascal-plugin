@@ -1,0 +1,25 @@
+{
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step27-qa",
+  "ok": true,
+  "referencePaths": 3,
+  "surfaces": 139,
+  "junctions": 1,
+  "markings": 3,
+  "placements": 0,
+  "bounds": {
+    "min": [
+      -40,
+      -5.2
+    ],
+    "max": [
+      40,
+      40
+    ]
+  },
+  "viewCheck": {
+    "unchanged": true,
+    "persistentWrites": 0,
+    "changes": []
+  }
+}

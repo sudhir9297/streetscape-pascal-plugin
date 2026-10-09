@@ -1,3 +1,4 @@
+import type { AnyNodeId } from "@pascal-app/core";
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
@@ -86,12 +87,12 @@ describe('street infrastructure catalog', () => {
     const patches = descriptor.onDelete?.(asset, {
       [road.id]: road,
       [asset.id]: asset,
-    } as never) ?? []
+    } as never, new Set<AnyNodeId>([asset.id as AnyNodeId]), new Set<AnyNodeId>([asset.id as AnyNodeId])) ?? []
 
     expect(patches).toHaveLength(1)
     expect((patches[0]!.data as any).attachments).toEqual({})
     expect((patches[0]!.data as any).roadsideItemSuppressed['auto:hydrant:1']).toBe(true)
-    expect(roadNetworkParametrics.onDeleteCascade?.(road, {} as never, new Set()) as unknown)
+    expect(roadNetworkParametrics.onDeleteCascade?.(road, {} as never, new Set(), new Set<AnyNodeId>([road.id as AnyNodeId])) as unknown)
       .toEqual([asset.id as string])
   })
   test('registers six stable utility-menu asset families', () => {

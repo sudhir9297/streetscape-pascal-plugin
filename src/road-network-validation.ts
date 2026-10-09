@@ -23,6 +23,10 @@ export type RoadValidationIssue = {
 		| "excessive-grade"
 		| "insufficient-bridge-clearance"
 		| "self-edge"
+		| "section-span-changed"
+  | "junction-width-review"
+  | "junction-short-approach"
+  | "junction-uturn-marking-review"
 		| "short-edge";
 	severity: "error" | "warning";
 	message: string;

@@ -1,8 +1,8 @@
 import type { AnyNodeDefinition, Plugin } from '@pascal-app/core'
-// Side-effect: keeps the placement brush in sync with "find in catalog".
-import './find-sync'
-import './normalize-road-signs'
-import './purge-removed-lamps'
+import { initializeStreetscape } from './plugin-lifecycle'
+export { initializeStreetscape, disposeStreetscape } from './plugin-lifecycle'
+export { migrateStreetscapeScene } from './scene-load-migration'
+if (typeof window !== 'undefined') initializeStreetscape()
 import { cobraHeadLightDefinition } from './cobra-head-light-definition'
 import { STREETSCAPE_ICON } from './art'
 import { heritageCrookLightDefinition } from './heritage-crook-light-definition'
@@ -343,3 +343,35 @@ export {
   type ResidentialRoadAssetLayout,
   type ResidentialRoadAssetNode,
 } from './street-infrastructure-geometry'
+
+export { persistStreetProject, loadStreetProject, captureLegacyStreetProject } from "./host/street-project-store"
+
+export { persistVerifiedStreetProject, loadVerifiedStreetProject } from "./host/street-project-store"
+
+export { adaptResolvedCurrentRoad, convertStreetProjectRoads } from './street-project-compatibility'
+export { createImportedStreetProject, readImportedBaselineNetworks, resolveOsmSnapshotBaseline } from './osm-baseline-bridge'
+export { StreetApplicationChangeSet, StreetIdentityReference, StreetChangeConflict, prepareStreetApplicationChangeSet, streetSceneContent } from './domain/application-change-set'
+export { captureStreetChangePreconditions, prepareHostStreetChangeSet, commitHostStreetChangeSet } from './host/application-change-set'
+export { prepareRoadSegmentCommand } from './road-network-tool'
+export { prepareRoadEdgeDeletion, commitRoadEdgeDeletion } from './road-edge-delete-command'
+
+export { prepareAttachedAssetEdit, commitAttachedAssetEdit } from "./host/attached-asset-edit"
+
+export { compileStreet, type CompiledStreetPlan } from './street-compiler'
+export { StreetSectionLayout, StreetSectionLayoutInterval, StreetTrafficLane, StreetSurfaceBand, summarizeStreetSectionInterval } from './domain/street-section-layout'
+export { acceptStreetSectionLayout } from './host/section-layout-command'
+
+export { compileLaneMovements, compileProjectLaneMovements } from "./lane-movement-graph";
+export { acceptLaneMovementDecision } from "./host/lane-movement-command";
+export { LaneMovementDecision, laneMovementId } from "./domain/lane-movement";
+export { compileJunctionMovementPlan } from './street-junction-movement-plan';
+
+export { createStreetScenario, selectStreetScenario, redesignStreetSectionLayout, redesignStreetProperty } from "./host/street-scenario-command";
+
+export { resolveEffectiveStreetModel, compileStreetProject } from "./effective-street-model";
+export { redesignStreetSectionStyle, lockStreetScenarioSection, lockStreetScenarioProperty, suppressStreetScenarioInventory } from "./host/street-scenario-command";
+
+export { StreetSourceRefreshDiff, generateStreetSourceRefreshDiff, acquireStreetSourceRefresh } from "./source/street-source-refresh";
+
+export { prepareStreetSourceMerge, resolveStreetSourceMerge } from "./source/street-source-merge";
+export { acceptStreetSourceMerge } from "./host/street-source-merge-command";

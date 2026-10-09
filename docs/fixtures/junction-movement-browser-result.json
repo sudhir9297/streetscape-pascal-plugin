@@ -1,0 +1,53 @@
+{
+  "arrows": 2,
+  "checks": [
+    {
+      "name": "accepted arrows generated",
+      "pass": true
+    },
+    {
+      "name": "arrows reference only accepted movements",
+      "pass": true
+    },
+    {
+      "name": "signal fixture proposals remain pending",
+      "pass": true
+    },
+    {
+      "name": "crossing relationships reference legal accepted links",
+      "pass": true
+    },
+    {
+      "name": "surface plan uses identical marking polygons",
+      "pass": true
+    },
+    {
+      "name": "generation does not add network connections",
+      "pass": true
+    },
+    {
+      "name": "generation is read-only",
+      "pass": true
+    },
+    {
+      "name": "full reopen regenerates identical output",
+      "pass": true
+    },
+    {
+      "name": "2D and 3D switches preserve the document",
+      "pass": true
+    },
+    {
+      "name": "2D and light-preview 3D visually show matching arrows, crossing and pending signal",
+      "pass": true
+    },
+    {
+      "name": "fresh working scene preserved with three container nodes",
+      "pass": true
+    }
+  ],
+  "crossings": 1,
+  "pass": true,
+  "signals": 1,
+  "sceneId": "752dfac5a7da"
+}

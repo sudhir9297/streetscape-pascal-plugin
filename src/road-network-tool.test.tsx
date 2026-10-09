@@ -6,7 +6,7 @@ describe('road drafting cursor', () => {
   test('uses the shared wall-style ground marker and vertical guide', () => {
     const source = readFileSync(new URL('./road-network-tool.tsx', import.meta.url), 'utf8')
 
-    expect(source).toContain('CursorSphere, EDITOR_LAYER')
+    expect(source).toMatch(/CursorSphere,\s+EDITOR_LAYER/)
     expect(source).toContain('const WALL_STYLE_CURSOR_HEIGHT = 2.5')
     expect(source).toContain('color={invalid ? "#ef4444" : color}')
     expect(source).toContain('height={WALL_STYLE_CURSOR_HEIGHT}')
@@ -110,7 +110,7 @@ describe('road side-menu authoring controls', () => {
 
     expect(source).toContain('const draftStyle = buildRoadDraftStyle({')
     expect(source).toContain('graph.activeStyleId = draftStyle.id')
-    expect(source).toContain('() => buildRoadDraftStyle({')
+    expect(source).toMatch(/\(\) =>\s+buildRoadDraftStyle\(\{/)
     expect(source).toContain('current.activeStyleId === component.activeStyleId')
   })
 

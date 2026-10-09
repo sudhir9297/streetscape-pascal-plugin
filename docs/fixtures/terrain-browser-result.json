@@ -1,0 +1,50 @@
+{
+  "reopen": {
+    "pass": true,
+    "url": "http://localhost:3002/scene/f29f1cafb47e",
+    "reportVisible": true,
+    "rawMappedElevation": "110"
+  },
+  "checks": [
+    {
+      "name": "valid zero ground survives as measured data",
+      "pass": true
+    },
+    {
+      "name": "unknown mapped reference does not change terrain heights",
+      "pass": true
+    },
+    {
+      "name": "missing coverage and origin remain explicit",
+      "pass": true
+    },
+    {
+      "name": "incompatible mapped reference remains an unapplied claim",
+      "pass": true
+    },
+    {
+      "name": "Map panel exposes persisted evidence diagnostics",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "coverage and claims survive server save",
+      "pass": true
+    },
+    {
+      "name": "host hydration retains terrain evidence",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_ggd91fwu20iasceu",
+  "pass": true,
+  "sceneId": "f29f1cafb47e",
+  "url": "http://localhost:3002/"
+}

@@ -1,0 +1,46 @@
+{
+  "checks": [
+    {
+      "name": "location evidence proposes unconfirmed left-driving policy",
+      "pass": true
+    },
+    {
+      "name": "missing sidewalk presence remains unknown",
+      "pass": true
+    },
+    {
+      "name": "preview widths are visibly estimated with raw incompatible claim",
+      "pass": true
+    },
+    {
+      "name": "Map panel exposes persisted evidence diagnostics",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "section provenance survives server save",
+      "pass": true
+    },
+    {
+      "name": "confirmed regional pack survives hydration",
+      "pass": true
+    },
+    {
+      "name": "actual import dialog requires manual policy confirmation before enabling import",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_vu83v6a48o66bpgq",
+  "reopenedReportAndConfirmedPolicy": true,
+  "runtimeInteractionsPassed": true,
+  "pass": true,
+  "sceneId": "e4af3f28eaf8",
+  "url": "http://localhost:3002/"
+}

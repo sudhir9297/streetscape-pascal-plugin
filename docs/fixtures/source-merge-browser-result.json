@@ -1,0 +1,14 @@
+{
+  "acceptedRevision": 20,
+  "allScenariosRebased": true,
+  "browser": "T3 collaborative preview",
+  "cancelReadOnly": true,
+  "historicalBaselineUnchanged": true,
+  "lockedWalkingWidth": 4,
+  "newLampCount": 1,
+  "oneUndoEntry": true,
+  "prepareReadOnly": true,
+  "sceneId": "cf0c9d718146",
+  "undoRestoresAllNodes": true,
+  "unlockedLaneWidth": 3.8
+}

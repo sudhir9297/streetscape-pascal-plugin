@@ -1,0 +1,52 @@
+{
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step29-qa",
+  "ok": true,
+  "checks": [
+    {
+      "name": "cached and pure plans equivalent",
+      "passed": true
+    },
+    {
+      "name": "unchanged profiles reused",
+      "passed": true
+    },
+    {
+      "name": "width edit invalidates cache with equivalent output",
+      "passed": true
+    },
+    {
+      "name": "mounted geometry survives disposal request",
+      "passed": true
+    },
+    {
+      "name": "remount cancels pending retirement",
+      "passed": true
+    },
+    {
+      "name": "superseded unmounted geometry disposed once",
+      "passed": true
+    },
+    {
+      "name": "repeated regeneration retires all superseded resources",
+      "passed": true
+    }
+  ],
+  "actualEditor": {
+    "url": "http://localhost:3002/streetscape-step26-qa",
+    "laneWidthEdits": [
+      {
+        "fromView": "3D",
+        "width": 4,
+        "verifiedIn": "2D"
+      },
+      {
+        "fromView": "2D",
+        "width": 5,
+        "verifiedIn": "3D"
+      }
+    ],
+    "oneUndoRestoresWidth": 4,
+    "browserErrors": []
+  }
+}

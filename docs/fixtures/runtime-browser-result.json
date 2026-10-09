@@ -1,0 +1,201 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "representative fixture has attached lamp",
+      "pass": true
+    },
+    {
+      "name": "single Fiber runtime",
+      "pass": true
+    },
+    {
+      "name": "Canvas scene and extension handles render",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "preview does not mutate scene",
+      "pass": true
+    },
+    {
+      "name": "unrelated pointer cannot cancel",
+      "pass": true
+    },
+    {
+      "name": "unrelated pointer cannot commit",
+      "pass": true
+    },
+    {
+      "name": "extension commits one undo step",
+      "pass": true
+    },
+    {
+      "name": "undo restores extension",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "clean": true,
+      "historyDelta": 0,
+      "name": "extension cleanup Escape",
+      "unchanged": true
+    },
+    {
+      "name": "extension Escape releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "clean": true,
+      "historyDelta": 0,
+      "name": "extension cleanup pointercancel",
+      "unchanged": true
+    },
+    {
+      "name": "extension pointercancel releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "clean": true,
+      "historyDelta": 0,
+      "name": "extension cleanup blur",
+      "unchanged": true
+    },
+    {
+      "name": "extension blur releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "clean": true,
+      "historyDelta": 0,
+      "name": "extension cleanup unmount",
+      "unchanged": true
+    },
+    {
+      "name": "extension unmount releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "road-control-hit:point:ab:0 commits one undo step",
+      "pass": true
+    },
+    {
+      "name": "road-control-hit:point:ab:0 undo restores geometry",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "road-elevation-hit:point:ab:0:0.72 commits one undo step",
+      "pass": true
+    },
+    {
+      "name": "road-elevation-hit:point:ab:0:0.72 undo restores geometry",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "spline Escape releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "spline pointercancel releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "spline blur releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "drag started with live preview",
+      "pass": true
+    },
+    {
+      "name": "spline unmount releases preview/history",
+      "pass": true
+    },
+    {
+      "name": "orthographic camera mounted",
+      "pass": true
+    },
+    {
+      "name": "zoom measurement 10",
+      "scale": 0.09184,
+      "zoom": 10
+    },
+    {
+      "name": "spline screen scale at zoom 10",
+      "pass": true
+    },
+    {
+      "name": "zoom measurement 40",
+      "scale": 0.02296,
+      "zoom": 40
+    },
+    {
+      "name": "spline screen scale at zoom 40",
+      "pass": true
+    },
+    {
+      "name": "zoom measurement 100",
+      "scale": 0.009184,
+      "zoom": 100
+    },
+    {
+      "name": "spline screen scale at zoom 100",
+      "pass": true
+    },
+    {
+      "name": "extension screen scale at zoom 10",
+      "pass": true
+    },
+    {
+      "name": "extension screen scale at zoom 40",
+      "pass": true
+    },
+    {
+      "name": "extension screen scale at zoom 100",
+      "pass": true
+    },
+    {
+      "name": "no Canvas or interaction errors",
+      "pass": true
+    }
+  ],
+  "url": "http://localhost:3002/"
+}

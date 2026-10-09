@@ -1,0 +1,25 @@
+{
+  "sceneId": "779ec539f9ea",
+  "reopened": {
+    "width": 4,
+    "connectivity": 0,
+    "material": "concrete",
+    "locked": true
+  },
+  "alternative": {
+    "width": 2,
+    "connectivity": 1,
+    "locked": false
+  },
+  "baseline": {
+    "width": 2,
+    "connectivity": 1
+  },
+  "inventoryRestoreThroughUi": true,
+  "inventoryUndo": true,
+  "viewSwitchReadOnly": true,
+  "baselineUnchanged": true,
+  "sourcesUnchanged": true,
+  "lightPreview": true,
+  "browser": "Headless Chrome (T3 automation host explicitly unavailable)"
+}

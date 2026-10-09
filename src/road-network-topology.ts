@@ -1,3 +1,4 @@
+import { splitStreetSectionLayout } from "./domain/street-section-layout-split";
 import { buildRoadCrossSection } from "./road-cross-section";
 import {
 	sampleRoadAlignmentPoints,
@@ -41,6 +42,7 @@ export type RoadNetworkGraph = Pick<
 >;
 
 export type InsertRoadSegmentResult = {
+	edgeIdRemap: Record<string, string[]>;
 	graph: RoadNetworkGraph;
 	createdNodeIds: string[];
 	createdEdgeIds: string[];
@@ -141,11 +143,26 @@ function availableInnerId(
  * that may join them. Inner node/edge IDs are local to a scene node, so any
  * collisions are remapped rather than silently overwriting graph data.
  */
+/** Allocate a style identity without changing an existing road's cross section. */
+export function assignRoadStylePreset(
+	graph: RoadNetworkGraph,
+	style: RoadStylePreset,
+): string {
+	const existing = graph.stylePresets[style.id];
+	const id =
+		existing && JSON.stringify(existing) !== JSON.stringify(style)
+			? availableInnerId(style.id, graph.stylePresets)
+			: style.id;
+	graph.stylePresets[id] = { ...style, id };
+	return id;
+}
+
 export function mergeRoadGraphs(sources: RoadNetworkGraph[]): {
 	attachmentIdMaps: Array<Record<string, string>>;
 	edgeIdMaps: Array<Record<string, string>>;
 	graph: RoadNetworkGraph;
 	nodeIdMaps: Array<Record<string, string>>;
+	styleIdMaps: Array<Record<string, string>>;
 } {
 	const graph: RoadNetworkGraph = {
 		graphNodes: {},
@@ -158,9 +175,14 @@ export function mergeRoadGraphs(sources: RoadNetworkGraph[]): {
 	const nodeIdMaps: Array<Record<string, string>> = [];
 	const edgeIdMaps: Array<Record<string, string>> = [];
 	const attachmentIdMaps: Array<Record<string, string>> = [];
+	const styleIdMaps: Array<Record<string, string>> = [];
 
 	for (const source of sources) {
-		Object.assign(graph.stylePresets, source.stylePresets);
+		const styleIdMap: Record<string, string> = {};
+		for (const [id, style] of Object.entries(source.stylePresets)) {
+			styleIdMap[id] = assignRoadStylePreset(graph, style);
+		}
+		styleIdMaps.push(styleIdMap);
 		const nodeIdMap: Record<string, string> = {};
 		for (const node of Object.values(source.graphNodes)) {
 			const id = availableInnerId(node.id, graph.graphNodes);
@@ -181,6 +203,12 @@ export function mergeRoadGraphs(sources: RoadNetworkGraph[]): {
 			graph.edges[id] = {
 				...edge,
 				id,
+				styleId:
+					styleIdMap[
+						(source as Partial<RoadNetworkNode>).applyStyleToAll
+							? source.activeStyleId
+							: edge.styleId
+					] ?? edge.styleId,
 				startNodeId: nodeIdMap[edge.startNodeId] ?? edge.startNodeId,
 				endNodeId: nodeIdMap[edge.endNodeId] ?? edge.endNodeId,
 				alignment: edge.alignment.map((point) => [...point]),
@@ -214,8 +242,9 @@ export function mergeRoadGraphs(sources: RoadNetworkGraph[]): {
 					edgeIdMap[edgeId] ? [edgeIdMap[edgeId]!] : [],
 				),
 				approachControls: Object.fromEntries(
-					Object.entries(junction.approachControls ?? {}).flatMap(([edgeId, control]) =>
-						edgeIdMap[edgeId] ? [[edgeIdMap[edgeId]!, control]] : [],
+					Object.entries(junction.approachControls ?? {}).flatMap(
+						([edgeId, control]) =>
+							edgeIdMap[edgeId] ? [[edgeIdMap[edgeId]!, control]] : [],
 					),
 				),
 				cornerRadii: Object.fromEntries(
@@ -239,7 +268,7 @@ export function mergeRoadGraphs(sources: RoadNetworkGraph[]): {
 		graph.stylePresets = createEmptyRoadGraph().stylePresets;
 	}
 	reconcileRoadJunctions(graph);
-	return { attachmentIdMaps, edgeIdMaps, graph, nodeIdMaps };
+	return { attachmentIdMaps, edgeIdMaps, graph, nodeIdMaps, styleIdMaps };
 }
 
 /** One selectable road scene node per connected graph component. */
@@ -804,6 +833,7 @@ function addGraphEdge(
 		direction: template?.direction ?? "both",
 		...(template?.osmSource ? { osmSource: template.osmSource } : {}),
 		...(template?.turnLanes ? { turnLanes: template.turnLanes } : {}),
+		...(template?.sectionLayout ? { sectionLayout: structuredClone(template.sectionLayout) } : {}),
 		...(template?.osmVertical ? { osmVertical: template.osmVertical } : {}),
 		roadClass: template?.roadClass ?? "local",
 		joinMode: template?.joinMode ?? "auto",
@@ -935,6 +965,7 @@ function splitEdgeAt(
 	edgeId: string,
 	nodeId: string,
 	t = 0.5,
+	edgeIdRemap?: Record<string, string[]>,
 ): string | null {
 	const edge = graph.edges[edgeId];
 	if (!edge || edge.startNodeId === nodeId || edge.endNodeId === nodeId)
@@ -947,10 +978,20 @@ function splitEdgeAt(
 		edge.profileMode === "designed"
 			? splitRoadVerticalProfile(edge.verticalProfile ?? [], splitStation)
 			: [edge.verticalProfile ?? [], edge.verticalProfile ?? []];
+	const [firstLayout, secondLayout] = edge.sectionLayout
+		? splitStreetSectionLayout(edge.sectionLayout, splitStation)
+		: [undefined, undefined];
 	const originalEndNodeId = edge.endNodeId;
+	const osmSource = edge.osmSource?.span
+		? {
+				...edge.osmSource,
+				span: { ...edge.osmSource.span, coverage: "conservative" as const },
+			}
+		: edge.osmSource;
 	graph.edges[edgeId] = {
 		...edge,
 		endNodeId: nodeId,
+		osmSource,
 		alignment: sliceAlignment(
 			start.position,
 			edge.alignment,
@@ -959,10 +1000,12 @@ function splitEdgeAt(
 			t,
 		),
 		verticalProfile: firstProfile,
+		...(firstLayout ? { sectionLayout: firstLayout } : {}),
 		...(edge.turnLanes ? { turnLanes: { start: edge.turnLanes.start } } : {}),
 	};
 	const secondEdgeId = addGraphEdge(graph, nodeId, originalEndNodeId, {
 		...edge,
+		osmSource,
 		alignment: sliceAlignment(
 			start.position,
 			edge.alignment,
@@ -971,6 +1014,7 @@ function splitEdgeAt(
 			1,
 		),
 		verticalProfile: secondProfile,
+		...(secondLayout ? { sectionLayout: secondLayout } : {}),
 		...(edge.turnLanes ? { turnLanes: { end: edge.turnLanes.end } } : {}),
 		parentEdgeId: edge.parentEdgeId ?? edge.id,
 	});
@@ -980,7 +1024,35 @@ function splitEdgeAt(
 		secondEdgeId,
 		splitStation,
 	);
+	if (edgeIdRemap) {
+		for (const [originalId, descendants] of Object.entries(edgeIdRemap)) {
+			if (descendants.includes(edgeId))
+				edgeIdRemap[originalId] = descendants.flatMap((id) =>
+					id === edgeId ? [edgeId, secondEdgeId] : [id],
+				);
+		}
+	}
 	return secondEdgeId;
+}
+
+/** Split with an explicit one-to-many identity map for downstream selections/references. */
+export function splitRoadEdgeWithIdentityRemap(
+	graph: RoadNetworkGraph,
+	edgeId: string,
+	nodeId: string,
+	t: number,
+): { secondEdgeId: string | null; edgeIdRemap: Record<string, string[]> } {
+	const secondEdgeId = splitEdgeAt(graph, edgeId, nodeId, t);
+	return {
+		secondEdgeId,
+		edgeIdRemap: {
+			[edgeId]: secondEdgeId
+				? [edgeId, secondEdgeId]
+				: graph.edges[edgeId]
+					? [edgeId]
+					: [],
+		},
+	};
 }
 
 /** Split one existing edge at an already-created graph node. */
@@ -1088,7 +1160,7 @@ export function snapRoadDraftPoint(
 				distance: best.projection.distance,
 				edgeId: best.edge.id,
 				kind: "centerline",
-					point: [...best.projection.point] as [number, number, number],
+				point: [...best.projection.point] as [number, number, number],
 			}
 		: null;
 }
@@ -1099,6 +1171,7 @@ function resolveEndpoint(
 	tolerance: number,
 	context: ConnectionContext,
 	splitEdgeIds: string[],
+	edgeIdRemap: Record<string, string[]>,
 ): { nodeId: string; created: boolean } {
 	const nearby = findNearbyNode(graph, point, tolerance, context);
 	if (nearby) return { nodeId: nearby.id, created: false };
@@ -1123,7 +1196,7 @@ function resolveEndpoint(
 
 	if (best) {
 		const nodeId = addGraphNode(graph, best.projection.point, context);
-		splitEdgeAt(graph, best.edge.id, nodeId, best.projection.t);
+		splitEdgeAt(graph, best.edge.id, nodeId, best.projection.t, edgeIdRemap);
 		splitEdgeIds.push(best.edge.id);
 		return { nodeId, created: true };
 	}
@@ -1304,8 +1377,12 @@ export function insertRoadSegment(
 	options: RoadInsertOptions = {},
 ): InsertRoadSegmentResult {
 	const graph = cloneGraph(source);
+	const edgeIdRemap = Object.fromEntries(
+		Object.keys(source.edges).map((id) => [id, [id]]),
+	);
 	if (distanceXZ(startPoint, endPoint) < 0.05) {
 		return {
+			edgeIdRemap,
 			graph,
 			createdNodeIds: [],
 			createdEdgeIds: [],
@@ -1331,6 +1408,7 @@ export function insertRoadSegment(
 		tolerance,
 		context,
 		splitEdgeIds,
+		edgeIdRemap,
 	);
 	if (start.created) createdNodeIds.push(start.nodeId);
 	const end = resolveEndpoint(
@@ -1339,6 +1417,7 @@ export function insertRoadSegment(
 		tolerance,
 		context,
 		splitEdgeIds,
+		edgeIdRemap,
 	);
 	if (end.created) createdNodeIds.push(end.nodeId);
 	if (
@@ -1347,6 +1426,7 @@ export function insertRoadSegment(
 	) {
 		reconcileRoadJunctions(graph);
 		return {
+			edgeIdRemap,
 			graph,
 			createdNodeIds,
 			createdEdgeIds,
@@ -1425,7 +1505,7 @@ export function insertRoadSegment(
 			(a, b) => b.tExisting - a.tExisting,
 		)) {
 			const relativeT = crossing.tExisting / upperT;
-			splitEdgeAt(graph, edgeId, crossing.nodeId, relativeT);
+			splitEdgeAt(graph, edgeId, crossing.nodeId, relativeT, edgeIdRemap);
 			upperT = crossing.tExisting;
 		}
 		splitEdgeIds.push(edgeId);
@@ -1485,6 +1565,7 @@ export function insertRoadSegment(
 	reconcileRoadJunctions(graph);
 
 	return {
+		edgeIdRemap,
 		graph,
 		createdNodeIds,
 		createdEdgeIds,

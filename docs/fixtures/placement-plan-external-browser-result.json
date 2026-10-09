@@ -1,0 +1,35 @@
+{
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step30-qa",
+  "ok": true,
+  "checks": [
+    {
+      "name": "hidden preference reaches transient floorplan overlay",
+      "passed": true
+    },
+    {
+      "name": "hidden preference survives drag override clearing",
+      "passed": true
+    },
+    {
+      "name": "preview toggling writes no saved scene",
+      "passed": true
+    },
+    {
+      "name": "preview toggling adds no undo entries",
+      "passed": true
+    },
+    {
+      "name": "generation accepted actual inventory",
+      "passed": true
+    },
+    {
+      "name": "repeat acceptance creates no duplicate inventory",
+      "passed": true
+    },
+    {
+      "name": "adjusted asset retained after repeated acceptance",
+      "passed": true
+    }
+  ]
+}

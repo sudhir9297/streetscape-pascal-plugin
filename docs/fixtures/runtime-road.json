@@ -1,0 +1,11 @@
+{
+  "name": "Streetscape phase 0 test",
+  "graphNodes": {
+    "a": {"id":"a","position":[-10,0.1,0]},
+    "b": {"id":"b","position":[10,0.1,0]}
+  },
+  "edges": {
+    "ab": {"id":"ab","startNodeId":"a","endNodeId":"b","alignment":[[0,0.1,-3]],"styleId":"local-street"}
+  },
+  "attachedAsset": {"type":"streetscape:street-light","station":4,"lateralOffset":5}
+}

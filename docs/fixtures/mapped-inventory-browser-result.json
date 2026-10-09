@@ -1,0 +1,40 @@
+{
+  "checks": [
+    {
+      "name": "ambiguous corridor retains candidates without acceptance",
+      "pass": true
+    },
+    {
+      "name": "manual choice resolves inventory",
+      "pass": true
+    },
+    {
+      "name": "Map panel exposes persisted evidence diagnostics",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "candidate choices and raw source survive save",
+      "pass": true
+    },
+    {
+      "name": "resolved mapped surface survives hydration",
+      "pass": true
+    },
+    {
+      "name": "mapped sidewalk replaces estimated band through interior stations",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_nlrr7fgs3arudtlb",
+  "pass": true,
+  "sceneId": "62e909c93779",
+  "url": "http://localhost:3002/"
+}

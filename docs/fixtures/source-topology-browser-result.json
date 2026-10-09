@@ -1,0 +1,48 @@
+{
+  "checks": [
+    {
+      "name": "source topology is pure and deterministic",
+      "pass": true
+    },
+    {
+      "name": "grade conflict remains reviewable",
+      "pass": true
+    },
+    {
+      "name": "grade-separated crossing has no shared host connection",
+      "pass": true
+    },
+    {
+      "name": "straight parallel source way is retained",
+      "pass": true
+    },
+    {
+      "name": "synthetic host nodes explicitly derived",
+      "pass": true
+    },
+    {
+      "name": "Map panel exposes persisted evidence diagnostics",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "logical topology survives server save",
+      "pass": true
+    },
+    {
+      "name": "derived provenance survives hydration",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_0eclw6lvxw6ldeh1",
+  "pass": true,
+  "sceneId": "63bda99c9b5d",
+  "url": "http://localhost:3002/"
+}

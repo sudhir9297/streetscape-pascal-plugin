@@ -1,0 +1,58 @@
+{
+  "checks": [
+    {
+      "name": "supported restriction excludes forbidden turn",
+      "pass": true
+    },
+    {
+      "name": "other outgoing turn remains available",
+      "pass": true
+    },
+    {
+      "name": "raw relation retained",
+      "pass": true
+    },
+    {
+      "name": "movement report visible",
+      "pass": true
+    },
+    {
+      "name": "server save",
+      "pass": true
+    },
+    {
+      "name": "durable read",
+      "pass": true
+    },
+    {
+      "name": "complete document retains movement constraints",
+      "pass": true
+    },
+    {
+      "name": "complete document retains raw source",
+      "pass": true
+    },
+    {
+      "name": "legal evidence survives server reopening",
+      "pass": true
+    },
+    {
+      "name": "regeneration is read-only",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_nugw2rc02dzc80fi",
+  "pass": true,
+  "sceneId": "d18c5d672e64",
+  "browser": "T3 collaborative Chromium",
+  "url": "http://localhost:3002/scene/d18c5d672e64",
+  "fullReopen": {
+    "forbiddenTurnExcluded": true,
+    "otherTurnAvailable": true,
+    "rawSourceRetained": true,
+    "acquisitionRequests": 0,
+    "readOnly2D": true,
+    "readOnly3D": true
+  },
+  "freshSceneId": "78dbb7690924"
+}

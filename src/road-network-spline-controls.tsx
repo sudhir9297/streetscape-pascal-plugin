@@ -10,7 +10,7 @@ import { EDITOR_LAYER, triggerSFX } from "@pascal-app/editor";
 import { useViewer } from "@pascal-app/viewer";
 import { type ThreeEvent, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { OrthographicCamera, Plane, Ray, Vector2, Vector3 } from "three";
+import { Plane, Ray, Vector2, Vector3 } from "three";
 import { sampleRoadEdgePoints } from "./road-network-geometry";
 import { acquireRoadHistoryPause } from "./scene-history-pause";
 import {
@@ -22,6 +22,11 @@ import {
 } from "./road-network-spline-handles";
 import type { RoadNetworkNode } from "./schema";
 import { type RoadElementSelection, useStreetscapeStore } from "./store";
+import { useRoadHandleScale } from "./road-handle-scale";
+import {
+	captureRoadEditPreconditions,
+	commitRoadGeometryEdit,
+} from "./road-edit-commit";
 
 const HANDLE_SCALE = 0.82;
 const HANDLE_COLOR = "#d6a56a";
@@ -78,9 +83,9 @@ function RoadSplinePointControl({
 	controlSelection: Omit<RoadElementSelection, "networkId">;
 	movePoint: (
 		point: readonly [number, number, number],
-	) =>
-		| Partial<Pick<RoadNetworkNode, "edges" | "graphNodes" | "junctions">>
-		| null;
+	) => Partial<
+		Pick<RoadNetworkNode, "edges" | "graphNodes" | "junctions">
+	> | null;
 	node: RoadNetworkNode;
 	planDraggable?: boolean;
 	point: readonly [number, number, number];
@@ -91,7 +96,9 @@ function RoadSplinePointControl({
 	const [elevationHovered, setElevationHovered] = useState(false);
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const { camera, gl, raycaster } = useThree();
-	const zoom = camera instanceof OrthographicCamera ? 1 / camera.zoom : 1;
+	const handleRef = useRoadHandleScale(
+		HANDLE_SCALE * (hovered || selected ? 1.12 : 1),
+	);
 	const color = selected
 		? HANDLE_SELECTED_COLOR
 		: hovered
@@ -108,6 +115,7 @@ function RoadSplinePointControl({
 			toggleSelection();
 			return;
 		}
+		cleanupRef.current?.();
 		setHovered(false);
 		setElevationHovered(false);
 		if (!selected) {
@@ -118,6 +126,7 @@ function RoadSplinePointControl({
 		}
 		if (mode !== "elevation" && !planDraggable) return;
 
+		const expected = captureRoadEditPreconditions(node);
 		const nodeId = node.id as AnyNodeId;
 		const originalPoint = new Vector3(...point);
 		const plane =
@@ -137,7 +146,8 @@ function RoadSplinePointControl({
 			Pick<RoadNetworkNode, "edges" | "graphNodes" | "junctions">
 		> | null = null;
 		const releaseHistory = useScene.temporal.getState().isTracking
-			? acquireRoadHistoryPause() : () => {};
+			? acquireRoadHistoryPause()
+			: () => {};
 
 		useViewer.getState().setInputDragging(true);
 		document.body.style.cursor =
@@ -159,6 +169,7 @@ function RoadSplinePointControl({
 			cleanupRef.current = null;
 		};
 		const onMove = (moveEvent: PointerEvent) => {
+			if (moveEvent.pointerId !== event.pointerId) return;
 			const rect = gl.domElement.getBoundingClientRect();
 			pointer.set(
 				((moveEvent.clientX - rect.left) / rect.width) * 2 - 1,
@@ -185,23 +196,40 @@ function RoadSplinePointControl({
 			useLiveNodeOverrides.getState().set(nodeId, patch);
 			useScene.getState().markDirty(nodeId);
 		};
-		const onUp = () => {
+		const onUp = (upEvent: PointerEvent) => {
+			if (upEvent.pointerId !== event.pointerId) return;
 			releaseHistory();
-			if (lastPatch) {
-				useScene.getState().updateNode(nodeId, lastPatch as Partial<AnyNode>);
-				triggerSFX("sfx:item-place");
+			try {
+				if (lastPatch) {
+					commitRoadGeometryEdit(node, lastPatch, expected);
+					triggerSFX("sfx:item-place");
+				}
+			} finally {
+				clearPreview();
+				swallowNextClick();
+				cleanup();
 			}
-			clearPreview();
-			swallowNextClick();
-			cleanup();
 		};
-		const onCancel = () => {
+		const onCancel = (cancelEvent?: Event) => {
+			if (
+				cancelEvent &&
+				"pointerId" in cancelEvent &&
+				cancelEvent.pointerId !== event.pointerId
+			)
+				return;
 			releaseHistory();
 			clearPreview();
 			cleanup();
 		};
 		const onKeyDown = (keyEvent: KeyboardEvent) => {
-			if (keyEvent.key !== "Escape" && !((keyEvent.metaKey || keyEvent.ctrlKey) && keyEvent.key.toLowerCase() === "z")) return;
+			if (
+				keyEvent.key !== "Escape" &&
+				!(
+					(keyEvent.metaKey || keyEvent.ctrlKey) &&
+					keyEvent.key.toLowerCase() === "z"
+				)
+			)
+				return;
 			keyEvent.preventDefault();
 			keyEvent.stopImmediatePropagation();
 			onCancel();
@@ -219,7 +247,7 @@ function RoadSplinePointControl({
 		<group
 			layers={EDITOR_LAYER}
 			position={[point[0], point[1] + 0.35, point[2]]}
-			scale={zoom * HANDLE_SCALE * (hovered || selected ? 1.12 : 1)}
+			ref={handleRef}
 		>
 			<mesh renderOrder={1010}>
 				<sphereGeometry args={[0.24, 20, 14]} />
@@ -316,17 +344,14 @@ function RoadSplineInsertControl({
 	point: readonly [number, number, number];
 }) {
 	const [hovered, setHovered] = useState(false);
-	const { camera } = useThree();
-	const zoom = camera instanceof OrthographicCamera ? 1 / camera.zoom : 1;
+	const handleRef = useRoadHandleScale(0.72 * (hovered ? 1.18 : 1));
 
 	const onPointerDown = (event: ThreeEvent<PointerEvent>) => {
 		if (event.button !== 0) return;
 		event.stopPropagation();
 		const patch = insertRoadSplinePoint(node, edgeId, insertionIndex, point);
 		if (!patch) return;
-		useScene
-			.getState()
-			.updateNode(node.id as AnyNodeId, patch as Partial<AnyNode>);
+		commitRoadGeometryEdit(node, patch);
 		useStreetscapeStore.getState().setRoadElementSelection({
 			networkId: node.id,
 			kind: "control",
@@ -340,7 +365,7 @@ function RoadSplineInsertControl({
 		<group
 			layers={EDITOR_LAYER}
 			position={[point[0], point[1] + 0.24, point[2]]}
-			scale={zoom * 0.72 * (hovered ? 1.18 : 1)}
+			ref={handleRef}
 		>
 			<mesh renderOrder={1009}>
 				<sphereGeometry args={[0.16, 16, 10]} />
@@ -416,9 +441,7 @@ export function RoadNetworkSplineControls({
 			const patch = deleteRoadSplinePoints(node, elementSelection.id, indices);
 			if (!patch) return;
 			event.preventDefault();
-			useScene
-				.getState()
-				.updateNode(node.id as AnyNodeId, patch as Partial<AnyNode>);
+			commitRoadGeometryEdit(node, patch);
 			useStreetscapeStore.getState().setRoadElementSelection({
 				networkId: node.id,
 				kind: "spline",
@@ -440,10 +463,10 @@ export function RoadNetworkSplineControls({
 						? []
 						: [elementSelection.index]))
 				: [];
-		const selected = selectedIndices.includes(index);
-		return (
-			// biome-ignore lint/suspicious/noArrayIndexKey: authored alignment points have no IDs, and remounting one during its drag would cancel the gesture.
-			<RoadSplinePointControl
+			const selected = selectedIndices.includes(index);
+			return (
+				// biome-ignore lint/suspicious/noArrayIndexKey: authored alignment points have no IDs, and remounting one during its drag would cancel the gesture.
+				<RoadSplinePointControl
 					controlKey={`point:${edge.id}:${index}`}
 					controlSelection={{ kind: "control", id: edge.id, index }}
 					key={`${edge.id}:${index}`}

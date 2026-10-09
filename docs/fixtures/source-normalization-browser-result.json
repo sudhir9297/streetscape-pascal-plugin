@@ -1,0 +1,50 @@
+{
+  "checks": [
+    {
+      "name": "deterministic pure normalization",
+      "pass": true
+    },
+    {
+      "name": "feet normalized without changing raw tags",
+      "pass": true
+    },
+    {
+      "name": "incomplete and unsupported roads remain rejected evidence",
+      "pass": true
+    },
+    {
+      "name": "report linked to immutable snapshot",
+      "pass": true
+    },
+    {
+      "name": "only accepted road generates geometry",
+      "pass": true
+    },
+    {
+      "name": "Map panel exposes persisted evidence diagnostics",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "raw rejected inputs and source tags survive server save",
+      "pass": true
+    },
+    {
+      "name": "host hydration retains rejected geometry",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_gubzkycztw9yl5mb",
+  "savedSceneReportVisible": true,
+  "runtimeChecksPassed": true,
+  "pass": true,
+  "sceneId": "5410f9a0ed0f",
+  "url": "http://localhost:3002/"
+}

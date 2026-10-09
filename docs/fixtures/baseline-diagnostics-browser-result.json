@@ -1,0 +1,58 @@
+{
+  "checks": [
+    {
+      "name": "unconfirmed policy blocks baseline acceptance",
+      "pass": true
+    },
+    {
+      "name": "confirmed import retains reviewable uncertainty",
+      "pass": true
+    },
+    {
+      "name": "missing sidewalk presence remains unknown",
+      "pass": true
+    },
+    {
+      "name": "preview widths are visibly estimated with raw incompatible claim",
+      "pass": true
+    },
+    {
+      "name": "Map panel exposes persisted evidence diagnostics",
+      "pass": true
+    },
+    {
+      "name": "server save accepted",
+      "pass": true
+    },
+    {
+      "name": "fresh server read accepted",
+      "pass": true
+    },
+    {
+      "name": "diagnostics survive server save",
+      "pass": true
+    },
+    {
+      "name": "incompatible source width remains inspectable",
+      "pass": true
+    },
+    {
+      "name": "diagnostics survive scene hydration",
+      "pass": true
+    }
+  ],
+  "nodeId": "road-network_am2ku8tcnd3ncqux",
+  "pass": true,
+  "sceneId": "f5b94fffd929",
+  "url": "http://localhost:3002/",
+  "dialog": {
+    "blockedBeforeConfirmation": true,
+    "enabledAfterConfirmation": true,
+    "reviewItemsRetained": 9
+  },
+  "runtimeRegression": {
+    "pass": true,
+    "evidence": "baseline-runtime-browser-result.json",
+    "initialFailure": "hidden 3D Canvas while 2D was selected"
+  }
+}

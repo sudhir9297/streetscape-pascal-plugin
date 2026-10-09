@@ -71,3 +71,8 @@ export function tileIndexAt(
 }
 
 export { latLonToTileFraction }
+
+/** MapLibre uses a 512 CSS-pixel world tile, including fractional zoom levels. */
+export function mapSelectionRadiusPixels(lat: number, zoom: number, radiusMeters: number): number {
+	return radiusMeters / (metersPerPixel(lat, zoom) / 2)
+}

@@ -1,0 +1,22 @@
+{
+  "sceneId": "779ec539f9ea",
+  "scenarioA": "scenario:6a60a80d-df68-418c-8d16-d246908407d2",
+  "scenarioB": "scenario:170e5afa-dfba-4990-83fe-22527b062177",
+  "baselineId": "baseline-existing:import:1:lane-movement:2:section-layout:3",
+  "roadId": "road:[\"osm~way~10~1.2~0~1~n1~n2\",\"osm~way~20~2.3~0~1~n2~n3\",\"osm~way~30~2.4~0~1~n2~n4\"]",
+  "edgeId": "osm~way~10~1.2~0~1~n1~n2",
+  "sectionId": "section:osm~way~10~1.2~0~1~n1~n2",
+  "scenarioWidthA": 4,
+  "scenarioWidthB": 2,
+  "unchangedLaneWidth": true,
+  "scenarioConnectivityA": 0,
+  "scenarioConnectivityB": 1,
+  "baselineConnectivity": 1,
+  "independentCompilation": true,
+  "lockedEditRejected": true,
+  "undoCount": 1,
+  "undoRestored": true,
+  "baselineUnchanged": true,
+  "sourcesUnchanged": true,
+  "reopenedSame": true
+}

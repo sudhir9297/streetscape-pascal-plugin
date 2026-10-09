@@ -51,14 +51,15 @@ function RoadEarthworkMesh({
 /** Non-interactive daylight slopes between ground roads and site terrain. */
 export function RoadNetworkEarthworks({
 	node,
-	terrain,
+	terrain, compiledStrips,
 }: {
+ compiledStrips?:ReturnType<typeof buildRoadEarthworkStrips>;
 	node: RoadNetworkNode;
 	terrain: TerrainField | null;
 }) {
 	const strips = useMemo(
-		() => buildRoadEarthworkStrips(node, terrain),
-		[node, terrain],
+		() => compiledStrips ?? buildRoadEarthworkStrips(node, terrain),
+		[node, terrain,compiledStrips],
 	);
 	if (strips.length === 0) return null;
 	return (

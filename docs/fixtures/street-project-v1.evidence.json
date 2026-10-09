@@ -1,0 +1,335 @@
+{
+  "format": "streetscape-project",
+  "schemaVersion": 1,
+  "id": "project-imported",
+  "name": "OSM block reconstruction",
+  "revision": 2,
+  "siteFrameId": "site-frame-example",
+  "sourceReferences": {
+    "osm-snapshot": {
+      "id": "osm-snapshot",
+      "provider": "openstreetmap",
+      "acquiredAt": "2026-10-08T09:00:00Z",
+      "contentIdentity": null,
+      "snapshot": {
+        "status": "embedded",
+        "format": "overpass-json",
+        "data": {
+          "elements": [
+            {
+              "type": "node",
+              "id": 10,
+              "lat": 0,
+              "lon": 0,
+              "tags": {
+                "highway": "street_lamp"
+              }
+            },
+            {
+              "type": "way",
+              "id": 20,
+              "nodes": [
+                1,
+                2
+              ],
+              "tags": {
+                "highway": "residential",
+                "width": "unknown"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "baselineRevisions": {
+    "baseline-original": {
+      "id": "baseline-original",
+      "parentRevisionId": null,
+      "acceptedAt": "2026-10-08T10:00:00Z",
+      "sourceReferenceIds": [
+        "osm-snapshot"
+      ],
+      "roads": {
+        "road-block": {
+          "id": "road-block",
+          "origin": "imported",
+          "sourceReferenceIds": [
+            "osm-snapshot"
+          ],
+          "representation": "pascal-road-network-v1",
+          "data": {
+            "id": "road-network_example",
+            "type": "streetscape:road-network",
+            "graphNodes": {
+              "a": {
+                "id": "a",
+                "position": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "b": {
+                "id": "b",
+                "position": [
+                  20,
+                  1,
+                  0
+                ]
+              }
+            },
+            "edges": {
+              "ab": {
+                "id": "ab",
+                "startNodeId": "a",
+                "endNodeId": "b",
+                "alignment": [
+                  [
+                    10,
+                    0.5,
+                    2
+                  ]
+                ],
+                "styleId": "local-street"
+              }
+            },
+            "roadsideItemSuppressed": {
+              "generated-lamp:1": true
+            },
+            "stylePresets": {
+              "local-street": {
+                "id": "local-street",
+                "name": "Local street",
+                "sidewalkWidth": 1.5
+              }
+            }
+          }
+        }
+      },
+      "features": {
+        "lamp-observation": {
+          "id": "lamp-observation",
+          "kind": "point-asset",
+          "origin": "imported",
+          "sourceReferenceIds": [
+            "osm-snapshot"
+          ],
+          "sourceFeatureId": "node/10",
+          "representation": "osm-import-v1",
+          "data": {
+            "kind": "street-lamp",
+            "position": [
+              5,
+              0.25,
+              3
+            ],
+            "elevationSource": "terrain"
+          }
+        }
+      },
+      "propertyEvidence": {
+        "sidewalk-width": {
+          "id": "sidewalk-width",
+          "target": {
+            "category": "roads",
+            "featureId": "road-block",
+            "path": [
+              "stylePresets",
+              "local-street",
+              "sidewalkWidth"
+            ]
+          },
+          "units": "metres",
+          "claims": {
+            "osm": {
+              "id": "osm",
+              "value": 1.5,
+              "origin": {
+                "kind": "source",
+                "sourceReferenceId": "osm-snapshot",
+                "sourceFeatureId": "way/12"
+              }
+            }
+          },
+          "rejectedClaims": [],
+          "accepted": {
+            "kind": "claim",
+            "claimId": "osm"
+          }
+        }
+      }
+    },
+    "baseline-corrected": {
+      "id": "baseline-corrected",
+      "parentRevisionId": "baseline-original",
+      "acceptedAt": "2026-10-08T10:00:00Z",
+      "sourceReferenceIds": [
+        "osm-snapshot"
+      ],
+      "roads": {
+        "road-block": {
+          "id": "road-block",
+          "origin": "imported",
+          "sourceReferenceIds": [
+            "osm-snapshot"
+          ],
+          "representation": "pascal-road-network-v1",
+          "data": {
+            "id": "road-network_example",
+            "type": "streetscape:road-network",
+            "graphNodes": {
+              "a": {
+                "id": "a",
+                "position": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "b": {
+                "id": "b",
+                "position": [
+                  20,
+                  1,
+                  0
+                ]
+              }
+            },
+            "edges": {
+              "ab": {
+                "id": "ab",
+                "startNodeId": "a",
+                "endNodeId": "b",
+                "alignment": [
+                  [
+                    10,
+                    0.5,
+                    2
+                  ]
+                ],
+                "styleId": "local-street"
+              }
+            },
+            "roadsideItemSuppressed": {
+              "generated-lamp:1": true
+            },
+            "stylePresets": {
+              "local-street": {
+                "id": "local-street",
+                "name": "Local street",
+                "sidewalkWidth": 1.5
+              }
+            }
+          }
+        }
+      },
+      "features": {
+        "lamp-observation": {
+          "id": "lamp-observation",
+          "kind": "point-asset",
+          "origin": "imported",
+          "sourceReferenceIds": [
+            "osm-snapshot"
+          ],
+          "sourceFeatureId": "node/10",
+          "representation": "osm-import-v1",
+          "data": {
+            "kind": "street-lamp",
+            "position": [
+              5,
+              0.25,
+              3
+            ],
+            "elevationSource": "terrain"
+          }
+        }
+      },
+      "propertyEvidence": {
+        "sidewalk-width": {
+          "id": "sidewalk-width",
+          "target": {
+            "category": "roads",
+            "featureId": "road-block",
+            "path": [
+              "stylePresets",
+              "local-street",
+              "sidewalkWidth"
+            ]
+          },
+          "units": "metres",
+          "claims": {
+            "osm": {
+              "id": "osm",
+              "value": 1.5,
+              "origin": {
+                "kind": "source",
+                "sourceReferenceId": "osm-snapshot",
+                "sourceFeatureId": "way/12"
+              }
+            }
+          },
+          "rejectedClaims": [
+            {
+              "claimId": "osm",
+              "reason": "Surveyed clear width differs from the map"
+            }
+          ],
+          "accepted": {
+            "kind": "correction",
+            "value": 1.8,
+            "reason": "Accepted site measurement",
+            "acceptedAt": "2026-10-08T10:00:00Z",
+            "observationIds": [
+              "survey"
+            ],
+            "supersedesClaimId": "osm"
+          }
+        }
+      }
+    }
+  },
+  "activeBaselineRevisionId": "baseline-corrected",
+  "scenarios": {
+    "walking-proposal": {
+      "id": "walking-proposal",
+      "name": "Wider walking space",
+      "baselineRevisionId": "baseline-corrected",
+      "overrides": {
+        "sidewalk-width": {
+          "value": 2.4,
+          "reason": "Proposed wider pedestrian zone",
+          "authoredAt": "2026-10-08T10:00:00Z"
+        }
+      }
+    }
+  },
+  "activeScenarioId": "walking-proposal",
+  "siteFrames": {
+    "site-frame-example": {
+      "format": "streetscape-site-frame",
+      "schemaVersion": 1,
+      "id": "site-frame-example",
+      "projection": "equirectangular-local-v1",
+      "units": "metres",
+      "origin": {
+        "lat": 0,
+        "lon": 0
+      },
+      "orientationRadians": 0,
+      "verticalReference": {
+        "kind": "unknown"
+      }
+    }
+  },
+  "observations": {
+    "survey": {
+      "id": "survey",
+      "description": "Clear sidewalk width measured at the frontage",
+      "observedAt": "2026-10-08T10:00:00Z",
+      "sourceReferenceId": null,
+      "sourceFeatureId": null,
+      "referenceUri": null
+    }
+  }
+}

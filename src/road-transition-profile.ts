@@ -1,3 +1,4 @@
+import { sectionTransitionSample } from "./section-transition-sample"
 import {
   ROAD_SIDE_COMPONENT_SPECS,
   roadCarriagewayWidth,
@@ -272,7 +273,12 @@ function profileForPath(node: RoadNetworkNode, path: RoadRenderPath): RoadTransi
   const totalLength = distances.at(-1) ?? 0
   const start = endpointTransition(node, path, style, true, totalLength)
   const end = endpointTransition(node, path, style, false, totalLength)
+  const sectionLayout = path.edgeIds.length === 1 && edge.sectionLayout && Math.abs(edge.sectionLayout.length - totalLength) <= 0.05 ? edge.sectionLayout : undefined
   const sampleDistances = [...distances]
+  if (sectionLayout) {
+    for (const interval of sectionLayout.intervals) sampleDistances.push(interval.start, interval.end)
+    for (let station=1; station<totalLength; station++) sampleDistances.push(station)
+  }
   if (start) sampleDistances.push(start.end.length)
   if (end) sampleDistances.push(totalLength - end.end.length)
   const orderedDistances = [
@@ -283,6 +289,10 @@ function profileForPath(node: RoadNetworkNode, path: RoadRenderPath): RoadTransi
     ),
   ].sort((left, right) => left - right)
   const samples = orderedDistances.map((distance) => {
+    if (sectionLayout) {
+      const reversed = edge.startNodeId !== path.startNodeId
+      return sectionTransitionSample(buildSample(style, undefined, 0, pointAtDistance(points, distances, distance), distance), sectionLayout, reversed ? totalLength - distance : distance, reversed)
+    }
     if (start && distance <= start.end.length + EPSILON) {
       const targetMix = 1 - distance / start.end.length
       return buildSample(
@@ -321,7 +331,7 @@ function profileForPath(node: RoadNetworkNode, path: RoadRenderPath): RoadTransi
 export function buildRoadTransitionProfiles(node: RoadNetworkNode): RoadTransitionProfile[] {
   return buildRoadRenderPaths(
     node,
-    (left, right) => resolveStyle(node, left)?.id === resolveStyle(node, right)?.id,
+    (left, right) => !left.sectionLayout && !right.sectionLayout && resolveStyle(node, left)?.id === resolveStyle(node, right)?.id,
   ).flatMap((path) => {
     const profile = profileForPath(node, path)
     return profile ? [profile] : []
@@ -408,7 +418,7 @@ export function buildRoadTransitionProfilesIncremental(
 ): RoadTransitionProfile[] {
   const paths = buildRoadRenderPaths(
     node,
-    (left, right) => resolveStyle(node, left)?.id === resolveStyle(node, right)?.id,
+    (left, right) => !left.sectionLayout && !right.sectionLayout && resolveStyle(node, left)?.id === resolveStyle(node, right)?.id,
   )
   const nextEntries = new Map<string, RoadTransitionProfileCacheEntry>()
   const profiles: RoadTransitionProfile[] = []

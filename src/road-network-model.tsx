@@ -1,5 +1,11 @@
 'use client'
 
+import {buildMappedSurfaceMesh,mappedSurfaceColor} from "./road-mapped-surface-plan";
+import {maskMappedComponentsForProfile} from "./road-mapped-band-mask";
+export {maskMappedComponentsForProfile} from "./road-mapped-band-mask";
+import type {compileStreetPlacementPlan} from './street-placement-plan'
+import type { LaneMovementGraph } from './domain/lane-movement'
+import {createCachedStreetCompiler} from './street-compiler'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, ShapeUtils, Vector2 } from 'three'
@@ -133,72 +139,6 @@ function resolveStyle(node: RoadNetworkNode, edge: RoadGraphEdge): RoadStylePres
   )
 }
 
-export function maskMappedComponentsForProfile(node: RoadNetworkNode, profile: RoadTransitionProfile): RoadTransitionProfile {
-  const masks = new Map<number, Map<string, number>>()
-  const samples = profile.samples
-  if (samples.length < 2) return profile
-  for (const surface of node.osmMappedSurfaces) {
-	if (
-	  surface.associatedEdgeIds.length > 0 &&
-	  !surface.associatedEdgeIds.some((edgeId) => profile.edgeIds.includes(edgeId))
-	) continue
-	const components = surface.kind === 'cycleway'
-	  ? ['bike-lane'] as const
-	  : surface.kind === 'kerb'
-	    ? ['curb'] as const
-	    : surface.kind === 'sidewalk'
-	      ? ['sidewalk'] as const
-	      : surface.kind === 'crossing'
-	        ? ['curb', 'sidewalk'] as const
-	        : []
-	if (components.length === 0 || surface.points.length < 2) continue
-    for (const point of surface.points) {
-      let nearestDistance = Number.POSITIVE_INFINITY
-      let nearestIndex = 0
-      samples.forEach((sample, index) => {
-        const distance = Math.hypot(sample.point[0] - point[0], sample.point[2] - point[2])
-        if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = index }
-      })
-      if (nearestDistance > 6) continue
-      const next = samples[Math.min(samples.length - 1, nearestIndex + 1)]!
-      const previous = samples[Math.max(0, nearestIndex - 1)]!
-      const dx = next.point[0] - previous.point[0]
-      const dz = next.point[2] - previous.point[2]
-      const lateral = -dz * (point[0] - samples[nearestIndex]!.point[0]) + dx * (point[2] - samples[nearestIndex]!.point[2])
-	  const sides = surface.side === 'center'
-	    ? [lateral >= 0 ? 'left' : 'right'] as const
-	    : [surface.side] as const
-	  for (const side of sides) {
-	    for (const component of components) {
-	      const key = `${side}:${component}`
-	      for (const [offset, strength] of [[0, 1], [-1, 0.5], [1, 0.5], [-2, 0.2], [2, 0.2]] as const) {
-	        const index = nearestIndex + offset
-	        if (index < 0 || index >= samples.length) continue
-	        const station = masks.get(index) ?? new Map<string, number>()
-	        station.set(key, Math.max(station.get(key) ?? 0, strength))
-	        masks.set(index, station)
-	      }
-	    }
-	  }
-    }
-  }
-  if (masks.size === 0) return profile
-  return {
-    ...profile,
-    samples: profile.samples.map((sample, index) => {
-      const masked = masks.get(index)
-      if (!masked) return sample
-      const components = { ...sample.components }
-      for (const [key, strength] of masked) {
-        const [side, kind] = key.split(':') as ['left' | 'right', keyof typeof sample.components.left]
-        const component = components[side][kind]
-        const width = component.width * (1 - strength)
-        components[side] = { ...components[side], [kind]: { ...component, width, outerOffset: component.innerOffset + width } }
-      }
-      return { ...sample, components }
-    }),
-  }
-}
 
 function junctionApproachIndicatorPoints(
   node: RoadNetworkNode,
@@ -615,45 +555,11 @@ function RoadMappedCrossing({ crossing, ghost = false, roadWidth = 7 }: { crossi
   )
 }
 
-function RoadMappedSurface({ surface, ghost = false }: { surface: MappedSurface; ghost?: boolean }) {
-  const width = (surface.widthMeters ?? Number.parseFloat(surface.tags.width ?? surface.tags.est_width ?? '')) || (
-	  surface.kind === 'cycleway' ? 2.2 : surface.kind === 'kerb' ? 0.18 : surface.kind === 'crossing' ? 2.4 : 1.8
-  )
-  const geometry = useMemo(() => {
-    const result = createRoadGeometry()
-    const points = surface.points
-    if (points.length < 2) return result
-    const closed = points.length >= 3 && Math.hypot(points[0]![0] - points.at(-1)![0], points[0]![2] - points.at(-1)![2]) < 1e-5
-    const isArea = closed && (
-      surface.sourceType === 'relation' ||
-      surface.kind === 'pedestrian-area' ||
-      surface.kind === 'road-area' ||
-      surface.tags.area === 'yes'
-    )
-    if (isArea) {
-      const mesh = triangulateRoadBoundary(points.slice(0, -1), surface.holes ?? [])
-      result.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3))
-      result.setIndex(mesh.indices)
-      result.computeVertexNormals()
-      result.computeBoundingBox()
-      result.computeBoundingSphere()
-      return result
-    }
-    const mesh = buildRoadRibbonGeometry(points, {
-      elevationOffset: 0.01,
-      surfaceThickness: 0,
-      width,
-    })
-    result.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3))
-    result.setIndex(mesh.indices)
-    result.computeVertexNormals()
-    result.computeBoundingBox()
-    result.computeBoundingSphere()
-    return result
-  }, [surface, width])
+function RoadMappedSurface({ surface, mesh:compiledMesh, ghost = false }: { surface: MappedSurface; mesh?:ReturnType<typeof buildMappedSurfaceMesh>; ghost?: boolean }) {
+  const geometry=useMemo(()=>{const result=createRoadGeometry(),mesh=compiledMesh ?? buildMappedSurfaceMesh(surface);result.setAttribute('position',new Float32BufferAttribute(mesh.positions,3));result.setIndex(mesh.indices);if(mesh.positions.length){result.computeVertexNormals();result.computeBoundingBox();result.computeBoundingSphere()}return result},[surface,compiledMesh])
   useRoadGeometryLifecycle(geometry)
   if ((geometry.getAttribute('position')?.count ?? 0) === 0) return null
-  const color = surface.kind === 'cycleway' ? '#4f8b72' : surface.kind === 'pedestrian-area' ? '#b7a98f' : surface.kind === 'road-area' ? '#44474a' : surface.kind === 'kerb' ? '#777b7b' : surface.kind === 'crossing' ? '#d6d0b5' : '#9c9a91'
+  const color = mappedSurfaceColor(surface.kind)
   const solidDepth = surface.kind === 'kerb' ? 0.15 : surface.kind === 'road-area' ? 0.08 : 0.1
   return (
     <>
@@ -829,15 +735,19 @@ function RoadMarkingSurface({
 export function RoadNetworkModel({
 	clearancePeers = [],
   elementSelection,
+  placementPlan, proposalPreviewVisible=true,
   ghost = false,
   nonInteractive = false,
   node,
   onSelectElement,
 	onSelectRoadsideDecoration,
 	terrain = null,
+ laneMovements,
 }: {
 	clearancePeers?: RoadNetworkNode[]
   elementSelection?: RoadElementSelection | null
+  placementPlan?:ReturnType<typeof compileStreetPlacementPlan>
+  proposalPreviewVisible?:boolean
   ghost?: boolean
   nonInteractive?: boolean
   node: RoadNetworkNode
@@ -850,149 +760,12 @@ export function RoadNetworkModel({
 		event: ThreeEvent<PointerEvent>,
 	) => void
 	terrain?: TerrainField | null
+ laneMovements?:LaneMovementGraph
 }) {
-  const transitionProfileCache = useRef(createRoadTransitionProfileCache())
-  const junctionSurfaces = useMemo(
-    () =>
-      Object.values(node.graphNodes).flatMap((graphNode) => {
-        const incident = Object.values(node.edges).filter(
-          (edge) => edge.startNodeId === graphNode.id || edge.endNodeId === graphNode.id,
-        )
-        // Degree-two nodes are ordinary continuous bends. Their joined ribbon
-        // already covers the turn; adding an intersection disk creates a
-        // bulbous corner and lets per-junction geometry bleed beyond the kerb.
-        if (incident.length < 3) return []
-        const styles = incident.flatMap((edge) => {
-          const style = resolveStyle(node, edge)
-          return style ? [style] : []
-        })
-        const radius = Math.max(...styles.map((style) => roadCarriagewayWidth(style) / 2), 0)
-        const junction = node.junctions?.[graphNode.id]
-        const primaryStyle = junction?.primaryEdgeIds.flatMap((edgeId) => {
-          const edge = node.edges[edgeId]
-          const candidate = edge ? resolveStyle(node, edge) : undefined
-          return candidate ? [candidate] : []
-        })[0]
-        const style = primaryStyle ?? styles[0]
-        const approaches = incident.flatMap((edge) => {
-          const edgeStyle = resolveStyle(node, edge)
-          const points = sampleRoadEdgePoints(node, edge)
-          if (!edgeStyle || points.length < 2) return []
-          const from = edge.startNodeId === graphNode.id ? points[0]! : points.at(-1)!
-          const toward = edge.startNodeId === graphNode.id ? points[1]! : points.at(-2)!
-          return [{
-            angle: Math.atan2(toward[2] - from[2], toward[0] - from[0]),
-            edgeId: edge.id,
-            halfWidth: roadCarriagewayWidth(edgeStyle) / 2,
-          }]
-        })
-        const sideBands = buildRoadJunctionBands(styles)
-        const treatment = junction?.treatment ?? 'auto'
-        const automaticSolution = buildJunctionBoundaryGeometry(
-          approaches,
-          junction?.cornerRadii ?? {},
-        )
-        const manualBoundary = junction?.manualBoundaryEnabled && junction.manualBoundaryPoints.length >= 3
-          ? junction.manualBoundaryPoints
-          : undefined
-        const solution = manualBoundary
-          ? buildManualRoadJunctionBoundary(automaticSolution, manualBoundary)
-          : automaticSolution
-        const mappedHoles = node.osmMappedSurfaces
-          .filter((surface) =>
-            surface.kind === 'road-area' &&
-            surface.points.length >= 3 &&
-            (
-              surface.tags['area:highway'] === 'traffic_island' ||
-              surface.tags.highway === 'traffic_island' ||
-              surface.tags.traffic_calming === 'island'
-            ),
-          )
-          .map((surface) => surface.points.map((point) => [point[0] - graphNode.position[0], point[2] - graphNode.position[2]] as const))
-          .filter((hole) => hole.every(([x, z]) => Math.hypot(x, z) <= solution.maxExtent + 0.5))
-        return style && radius > 0
-          ? [{ graphNode, junction, manualBoundary, radius, sideBands, solution: { ...solution, holes: mappedHoles }, style, treatment }]
-          : []
-      }),
-    [node],
-  )
-  const junctionTrimByApproach = useMemo(
-    () =>
-      Object.fromEntries(
-        junctionSurfaces.flatMap(({ graphNode, solution }) =>
-          Object.entries(solution.approachCuts).map(([edgeId, distance]) => [
-            `${graphNode.id}:${edgeId}`,
-            distance,
-          ]),
-        ),
-      ),
-    [junctionSurfaces],
-  )
-  const edgeSurfaces = useMemo(
-    () =>
-      buildRoadTransitionProfilesIncremental(node, transitionProfileCache.current).map((profile) => {
-        const decorativeProfile = trimRoadTransitionProfile(
-          profile,
-          junctionTrimByApproach[`${profile.startNodeId}:${profile.edgeIds[0]}`] ?? 0,
-          junctionTrimByApproach[
-            `${profile.endNodeId}:${profile.edgeIds[profile.edgeIds.length - 1]}`
-          ] ?? 0,
-        )
-        const isManual = (id: string) =>
-          junctionSurfaces.some((j) => j.graphNode.id === id && j.manualBoundary)
-        const surfaceProfile = trimRoadProfileAtJunctions(
-          profile,
-          isManual(profile.startNodeId)
-            ? 0
-            : (junctionTrimByApproach[`${profile.startNodeId}:${profile.edgeIds[0]}`] ?? 0),
-          isManual(profile.endNodeId)
-            ? 0
-            : (junctionTrimByApproach[`${profile.endNodeId}:${profile.edgeIds.at(-1)}`] ?? 0),
-        )
-        const maskedProfile = maskMappedComponentsForProfile(node, surfaceProfile)
-        return {
-          decorativeProfile:
-            isManual(profile.startNodeId) || isManual(profile.endNodeId)
-              ? decorativeProfile
-              : maskedProfile,
-          profile: maskedProfile,
-        }
-      }),
-    [junctionTrimByApproach, junctionSurfaces, node],
-  )
-  const renderedJunctionSurfaces = useMemo(
-    () => {
-      const mergedAsphalt = mergeCollidingJunctionSurfaces(junctionSurfaces.map((junction) => ({
-        center: junction.graphNode.position,
-        mergeKey: Object.values(node.edges)
-          .filter((edge) => edge.startNodeId === junction.graphNode.id || edge.endNodeId === junction.graphNode.id)
-          .map((edge) => `${edge.osmVertical?.bridge === true ? 'bridge' : edge.osmVertical?.tunnel === true ? 'tunnel' : 'at-grade'}:${edge.osmVertical?.layer ?? 0}`)
-          .sort()
-          .join('|'),
-        solution: junction.solution,
-      })))
-      return junctionSurfaces.map((junction, junctionIndex) => {
-        if (junction.manualBoundary) return { ...junction, bandSurfaces: undefined }
-        const mouths = Object.fromEntries(
-          edgeSurfaces.flatMap(({ profile }) => {
-            const entries = []
-            if (profile.startNodeId === junction.graphNode.id)
-              entries.push([profile.edgeIds[0]!, roadJunctionMouth(profile, false)])
-            if (profile.endNodeId === junction.graphNode.id)
-              entries.push([profile.edgeIds.at(-1)!, roadJunctionMouth(profile, true)])
-            return entries
-          }),
-        )
-        const seams = buildRoadJunctionSeams(junction.solution, junction.graphNode.position, mouths)
-        return {
-          ...junction,
-          solution: { ...junction.solution, ...seams.asphalt, ...mergedAsphalt[junctionIndex] },
-          bandSurfaces: seams.bands,
-        }
-      })
-    },
-    [junctionSurfaces, edgeSurfaces, node.edges],
-  )
+  const compiler=useRef(createCachedStreetCompiler())
+  const compiled=useMemo(()=>compiler.current.compile(node,terrain,laneMovements),[node,terrain,laneMovements])
+  const edgeSurfaces=compiled.layout.edgeSurfaces
+  const renderedJunctionSurfaces=compiled.layout.renderedJunctionSurfaces
 
   const validationMarkers = useMemo(
     () =>
@@ -1004,7 +777,7 @@ export function RoadNetworkModel({
   )
   const markingGroups = useMemo(() => {
     const groups = new Map<string, RoadMarkingPolygon[]>()
-    for (const marking of buildRoadNetworkMarkings(node)) {
+    for (const marking of compiled.markings) {
       const key = `${marking.kind}:${marking.color}`
       groups.set(key, [...(groups.get(key) ?? []), marking])
     }
@@ -1014,18 +787,18 @@ export function RoadNetworkModel({
       kind: polygons[0]!.kind,
       polygons,
     }))
-  }, [node])
+  }, [compiled.markings])
   const roadsideDecorationPreviews = useMemo(
-    () => (node.showRoadsideDecorations
+    () => proposalPreviewVisible && (node.showRoadsideDecorations
       || node.roadsideItemVisibility?.lamp === true
       || node.roadsideItemVisibility?.sign === true)
-      ? buildRoadsideDecorationPreviews(node).filter((decoration) =>
+      ? (placementPlan ? placementPlan.proposals.map(item=>({...item,id:item.localId})) : compiled.placements).filter((decoration) =>
           node.showRoadsideDecorations
             ? node.roadsideItemVisibility?.[decoration.kind] !== false
             : node.roadsideItemVisibility?.[decoration.kind] === true,
         )
       : [],
-    [node],
+    [node,compiled.placements,placementPlan,proposalPreviewVisible],
   )
 
   return (
@@ -1050,9 +823,11 @@ export function RoadNetworkModel({
 				)}
 			</group>
 		)) : null}
-      {!ghost ? <RoadNetworkBridgeStructures node={node} /> : null}
-		{!ghost ? <RoadNetworkEarthworks node={node} terrain={terrain} /> : null}
+      {!ghost ? <RoadNetworkBridgeStructures node={node} compiledSpans={compiled.bridgeSpans} /> : null}
+		{!ghost ? <RoadNetworkEarthworks node={node} terrain={terrain} compiledStrips={compiled.earthworkStrips} /> : null}
+      {compiled.sectionSurfaces.map((surface, index) => <RoadPolygonSurface key={`section:${surface.edgeId}:${surface.physicalId}:${index}`} color={surface.color} ghost={ghost} name={`road-section-${surface.kind}`} polygon={{points:surface.points}} />)}
       {edgeSurfaces.map(({ decorativeProfile, profile }) => {
+        if (profile.edgeIds.some(id => compiled.sectionSurfaces.some(surface => surface.edgeId === id))) return null;
         return (
         <group key={profile.key}>
           <RoadVariableRibbonSurface
@@ -1138,8 +913,14 @@ export function RoadNetworkModel({
             />
           ))
         : null}
-      {!ghost ? node.osmMappedSurfaces.map((surface) => (
-        <RoadMappedSurface key={`osm-surface:${surface.kind}:${surface.id}:${surface.partIndex ?? 0}`} surface={surface} />
+      {!ghost && proposalPreviewVisible ? compiled.junctionMovementPlan.signalProposals.map(proposal=>(
+       <group key={proposal.id} position={[...proposal.position]} name="pending-junction-signal-proposal">
+        <mesh position={[0,1.4,0]} raycast={()=>null}><cylinderGeometry args={[0.06,0.06,2.8,6]}/><meshBasicMaterial color="#a78bfa" transparent opacity={0.6}/></mesh>
+        <mesh position={[0,2.5,0]} raycast={()=>null}><boxGeometry args={[0.3,0.7,0.2]}/><meshBasicMaterial color="#a78bfa" transparent opacity={0.6}/></mesh>
+       </group>
+      )) : null}
+      {!ghost ? node.osmMappedSurfaces.map((surface,index) => (
+        <RoadMappedSurface key={`osm-surface:${surface.kind}:${surface.id}:${surface.partIndex ?? 0}`} surface={surface} mesh={compiled.mappedSurfaces[index]!.mesh} />
       )) : null}
       {!ghost ? node.osmCrossings.map((crossing) => (
         <RoadMappedCrossing

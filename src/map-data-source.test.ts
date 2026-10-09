@@ -1,13 +1,23 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import {
 	configureMapImportGateway,
+	configureOsmStreetDataSource,
 	getElevationTileUrl,
 	getGeocodeRequest,
 	getRasterTileUrl,
 	getStreetRequest,
 } from './map-data-source'
 
-afterEach(() => configureMapImportGateway(null))
+afterEach(() => {configureMapImportGateway(null);configureOsmStreetDataSource('overpass')})
+
+test('small-area OSM API requests retain honest query provenance and can switch back to Overpass',()=>{
+ configureOsmStreetDataSource('osm-api');
+ const spec=getStreetRequest({south:12.976,west:77.589,north:12.978,east:77.591},'unused overpass query');
+ expect(spec.url).toContain('https://api.openstreetmap.org/api/0.6/map.json?bbox=');
+ expect(spec.query).toContain('OSM API 0.6 map bbox=');expect(spec.elementMetadataRequested).toBe(true);
+ expect(()=>getStreetRequest({south:0,west:0,north:1,east:1},'')).toThrow();
+ configureOsmStreetDataSource('overpass');expect(getStreetRequest({south:0,west:0,north:.001,east:.001},'q').url).toContain('overpass-api.de');
+})
 
 describe('map data source', () => {
 	test('uses public services directly by default', () => {

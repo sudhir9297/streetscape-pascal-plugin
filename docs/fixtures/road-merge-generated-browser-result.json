@@ -1,0 +1,59 @@
+{
+  "checks": [
+    {
+      "name": "collision-safe merge prepares without writes",
+      "pass": true
+    },
+    {
+      "name": "two roads with colliding node and edge IDs merge without losing edges",
+      "pass": true
+    },
+    {
+      "name": "colliding style IDs retain both authored lane widths",
+      "pass": true
+    },
+    {
+      "name": "merged asset retains station and adjusted status",
+      "pass": true
+    },
+    {
+      "name": "asset reverse reference follows new road ownership",
+      "pass": true
+    },
+    {
+      "name": "accepted road bindings merge and historical baseline is unchanged",
+      "pass": true
+    },
+    {
+      "name": "merge is exactly one undo action",
+      "pass": true
+    },
+    {
+      "name": "merge undo restores roads, asset and document",
+      "pass": true
+    },
+    {
+      "name": "generated infrastructure is created and bound in accepted document",
+      "pass": true
+    },
+    {
+      "name": "replacement bindings contain no missing assets",
+      "pass": true
+    },
+    {
+      "name": "generated replacement retains prior accepted baseline",
+      "pass": true
+    },
+    {
+      "name": "generated replacement is one undo action",
+      "pass": true
+    },
+    {
+      "name": "replacement undo restores all prior assets and document",
+      "pass": true
+    }
+  ],
+  "generatedAssetCount": 5,
+  "pass": true,
+  "url": "http://localhost:3002/"
+}

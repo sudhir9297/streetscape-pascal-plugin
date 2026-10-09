@@ -1,0 +1,10 @@
+{
+  "dialogOpen": false,
+  "pass": true,
+  "roadCount": 1,
+  "roadRepresentation": "resolved-street-v1",
+  "sourceStatus": "embedded",
+  "status": [
+    "Added 1 street segment and 0 mapped objects to this level. Use 2D or 3D to inspect them; Undo removes the import."
+  ]
+}

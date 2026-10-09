@@ -1,3 +1,4 @@
+import {compileStreet} from './street-compiler'
 import { describe, expect, test } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -7,6 +8,7 @@ import {
   RoadDraftPreviewSurface,
   RoadNetworkModel,
   setRoadGeometryRetained,
+  maskMappedComponentsForProfile,
 } from './road-network-model'
 import { buildRoadNetworkFloorplan } from './road-network-floorplan'
 import { moveRoadTerminal } from './road-network-extension-handles'
@@ -15,6 +17,7 @@ import { createEmptyRoadGraph, insertRoadSegment } from './road-network-topology
 import { DrivewayNode, RoadNetworkNode } from './schema'
 import { sampleRoadAlignmentPoints } from './road-network-geometry'
 import { DEFAULT_ROAD_STYLE_PRESETS } from './road-style-presets'
+import {buildRoadTransitionProfiles} from './road-transition-profile'
 import {
   createRoadAttachmentForPlacement,
   pruneOrphanedRoadAttachments,
@@ -33,6 +36,17 @@ function renderThree(element: Parameters<typeof renderToStaticMarkup>[0]): strin
 function renderRoad(node: RoadNetworkNode): string {
   return renderThree(createElement(RoadNetworkModel, { node }))
 }
+
+test('a sparse confirmed mapped sidewalk replaces the estimated band across its full span',()=>{
+ const result=insertRoadSegment(createEmptyRoadGraph(),[0,0,0],[100,0,0]),edgeId=Object.keys(result.graph.edges)[0]!
+ const node=RoadNetworkNode.parse({...result.graph,osmMappedSurfaces:[{id:200,kind:'sidewalk',associatedEdgeIds:[edgeId],side:'left',tags:{highway:'footway'},points:[[0,0,3],[100,0,3]]}]})
+ const profile=buildRoadTransitionProfiles(node)[0]!,before=JSON.stringify(profile)
+ expect(profile.samples.some(s=>s.components.left.sidewalk.width>0)).toBe(true)
+ const masked=maskMappedComponentsForProfile(node,profile)
+ expect(masked.samples.every(s=>s.components.left.sidewalk.width===0)).toBe(true)
+ expect(masked.samples.some(s=>s.components.right.sidewalk.width>0)).toBe(true)
+ expect(JSON.stringify(profile)).toBe(before)
+})
 
 test('renders imported mapped sidewalk and cycleway geometry', () => {
   const result = insertRoadSegment(createEmptyRoadGraph(), [0, 0, 0], [20, 0, 0])
@@ -287,14 +301,15 @@ describe('road network corner rendering', () => {
     )).toBe(true)
   })
 
-  test('renders topology-driven centerlines, arrows, stop lines, and crosswalks', () => {
+  test('renders explicit controls and crossings while inferred arrows remain pending', () => {
     const first = insertRoadSegment(createEmptyRoadGraph(), [-30, 0, 0], [30, 0, 0])
     const tee = insertRoadSegment(first.graph, [0, 0, -30], [0, 0, 0], { tolerance: 0.1 })
 
+    for (const junction of Object.values(tee.graph.junctions)) junction.treatment = 'stop'
     const markup = renderRoad(RoadNetworkNode.parse(tee.graph))
 
     expect(markup).toContain('name="road-marking-centerline"')
-    expect(markup).toContain('name="road-marking-direction-arrow"')
+    expect(markup).not.toContain('name="road-marking-direction-arrow"')
     expect(markup).toContain('name="road-marking-stop-line"')
     expect(markup).toContain('name="road-marking-crosswalk"')
   })
@@ -324,10 +339,13 @@ describe('road network corner rendering', () => {
 
     expect(floorplan.kind).toBe('group')
     if (floorplan.kind !== 'group') return
-    const solvedPatch = floorplan.children.find(
-      (child) => child.kind === 'polygon' && child.points.length > 4,
-    )
-    expect(solvedPatch).toBeDefined()
+    const compiled=compileStreet(node)
+    const junction=compiled.junctions[0]!
+    expect(junction.solution.indices.length).toBeGreaterThan(0)
+    for(let i=0;i<junction.solution.indices.length;i+=3){
+      const points=junction.solution.indices.slice(i,i+3).map(index=>[junction.graphNode.position[0]+junction.solution.positions[index*3]!,junction.graphNode.position[2]+junction.solution.positions[index*3+2]!])
+      expect(floorplan.children.some(child=>child.kind==='polygon' && JSON.stringify(child.points)===JSON.stringify(points))).toBe(true)
+    }
   })
 
   test('keeps spline controls out of the always-on road hit targets', () => {

@@ -1,0 +1,58 @@
+{
+  "sceneId": "c0cbc3e23dbc",
+  "checks": [
+    {
+      "name": "forbidden turn absent",
+      "pass": true
+    },
+    {
+      "name": "one-way has no reverse departure",
+      "pass": true
+    },
+    {
+      "name": "explicit connectivity accepted",
+      "pass": true
+    },
+    {
+      "name": "other legal links pending",
+      "pass": true
+    },
+    {
+      "name": "review cancellation writes nothing",
+      "pass": true
+    },
+    {
+      "name": "accepted correction visible",
+      "pass": true
+    },
+    {
+      "name": "one undo step",
+      "pass": true
+    },
+    {
+      "name": "undo restores baseline",
+      "pass": true
+    },
+    {
+      "name": "redo restores correction",
+      "pass": true
+    },
+    {
+      "name": "durable save",
+      "pass": true
+    },
+    {
+      "name": "full page reopen retains identical movement graph",
+      "pass": true
+    },
+    {
+      "name": "fresh working scene preserved",
+      "pass": true
+    },
+    {
+      "name": "2D/3D view switching leaves document unchanged",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

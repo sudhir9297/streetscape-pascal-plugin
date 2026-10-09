@@ -1,5 +1,7 @@
 "use client";
 
+import { reconcileRoadAttachments } from "./host/road-attachment-reconciliation";
+
 import {
 	type AlignmentAnchor,
 	type AlignmentGuide,
@@ -12,8 +14,13 @@ import {
 	snapPointToGrid,
 	useScene,
 } from "@pascal-app/core";
-import * as PascalEditor from '@pascal-app/editor';
-import { CursorSphere, EDITOR_LAYER, triggerSFX, useEditor } from "@pascal-app/editor";
+import * as PascalEditor from "@pascal-app/editor";
+import {
+	CursorSphere,
+	EDITOR_LAYER,
+	triggerSFX,
+	useEditor,
+} from "@pascal-app/editor";
 import { useViewer } from "@pascal-app/viewer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Group } from "three";
@@ -55,6 +62,7 @@ import { sampleRoadEdgePoints } from "./road-network-geometry";
 import { RoadDraftPreviewSurface } from "./road-network-model";
 import {
 	createEmptyRoadGraph,
+	assignRoadStylePreset,
 	insertRoadSegment,
 	mergeRoadGraphs,
 	previewRoadInsertion,
@@ -68,7 +76,17 @@ import {
 } from "./road-network-topology";
 import { roadGraphHasBlockingIssues } from "./road-network-validation";
 import { RoadNetworkNode } from "./schema";
+import { resolveRoadAttachmentTransform } from "./road-edge-attachments";
 import { nextRoadElevationMode, useStreetscapeStore } from "./store";
+
+import { prepareRoadTopologyDocument } from "./host/road-topology-document";
+import { createStreetCommandDraft } from "./host/street-command-draft";
+import {
+	captureStreetChangePreconditions,
+	commitHostStreetChangeSet,
+} from "./host/application-change-set";
+import { getImportOwnerSite } from "./host/imported-baseline-persistence";
+import type { StreetIdentityReference } from "./domain/application-change-set";
 
 const ROAD_OPERATION_COLORS: Record<RoadInsertionOperation, string> = {
 	"create-cross": "#22c55e",
@@ -198,7 +216,10 @@ function previewSegment(
 	tangentLength?: number,
 ): RoadInsertionPreview {
 	const existing = roadNetworks(levelId);
-	const graph = existing.length > 0 ? mergeRoadGraphs(existing).graph : createEmptyRoadGraph();
+	const graph =
+		existing.length > 0
+			? mergeRoadGraphs(existing).graph
+			: createEmptyRoadGraph();
 	const store = useStreetscapeStore.getState();
 	return previewRoadInsertion(graph, start, end, {
 		alignment,
@@ -269,14 +290,18 @@ function resolveRoadAlignment(
 		moving: [movingRoadDraftAnchor(point)],
 		threshold: ROAD_DRAFT_ALIGNMENT_THRESHOLD_M,
 	};
-	return hostSnapApi.resolveAlignmentForActiveBuilding?.(input) ?? resolveAlignment(input);
+	return (
+		hostSnapApi.resolveAlignmentForActiveBuilding?.(input) ??
+		resolveAlignment(input)
+	);
 }
 
 function publishRoadAlignmentGuides(
 	guides: AlignmentGuide[],
 	mode: RoadDraftSnapMode,
 ): void {
-	const displayActive = hostSnapApi.isAlignmentGuideActive?.() ?? mode === "lines";
+	const displayActive =
+		hostSnapApi.isAlignmentGuideActive?.() ?? mode === "lines";
 	if (!displayActive) {
 		clearRoadAlignmentGuides();
 		return;
@@ -379,13 +404,17 @@ function roadMagneticSnapTolerance(networks: RoadNetworkNode[]): number {
 	return tolerance;
 }
 
-function commitSegment(
+export function prepareRoadSegmentCommand(
 	levelId: string,
 	start: RoadPoint,
 	end: RoadPoint,
 	alignment: RoadPoint[],
 	tangentLength?: number,
-): RoadNetworkNode | null {
+) {
+	const state = useScene.getState();
+	const expected = captureStreetChangePreconditions(
+		getImportOwnerSite(state, levelId),
+	);
 	const existing = roadNetworks(levelId);
 	const merged = mergeRoadGraphs(existing);
 	const graph = existing.length > 0 ? merged.graph : createEmptyRoadGraph();
@@ -398,15 +427,21 @@ function commitSegment(
 		shoulderWidth: store.roadShoulderWidth,
 		sides: store.roadSideComponents,
 	});
-	const autoInfrastructureSettings = existing.some((network) => network.roadsideAutoFillEnabled)
+	const autoInfrastructureSettings = existing.some(
+		(network) => network.roadsideAutoFillEnabled,
+	)
 		? FULL_ROAD_AUTO_INFRASTRUCTURE_SETTINGS
 		: store.roadAutoInfrastructure;
 	const clearedDraftStyle = applyRoadAutoInfrastructureClearances(
 		draftStyle,
 		autoInfrastructureSettings,
 	);
+	draftStyle.id = assignRoadStylePreset(graph, clearedDraftStyle);
 	graph.activeStyleId = draftStyle.id;
-	graph.stylePresets = { ...graph.stylePresets, [draftStyle.id]: clearedDraftStyle };
+	graph.stylePresets = {
+		...graph.stylePresets,
+		[draftStyle.id]: { ...clearedDraftStyle, id: draftStyle.id },
+	};
 	const result = insertRoadSegment(graph, start, end, {
 		alignment,
 		bendRadius: store.roadBendRadius,
@@ -426,7 +461,7 @@ function commitSegment(
 			result.createdEdgeIds.some((edgeId) => edgeId in component.edges),
 		),
 	);
-	const scene = useScene.getState();
+	const scene = createStreetCommandDraft(state.nodes, expected);
 	const resolvedNetworks: RoadNetworkNode[] = [];
 	const template = existing[0];
 	for (let index = 0; index < components.length; index++) {
@@ -435,10 +470,16 @@ function commitSegment(
 		const isTargetComponent = index === targetIndex;
 		const activeStyleId = isTargetComponent
 			? component.activeStyleId
-			: (current?.activeStyleId ?? component.activeStyleId);
+			: current
+				? (merged.styleIdMaps[index]?.[current.activeStyleId] ??
+					current.activeStyleId)
+				: component.activeStyleId;
 		const applyStyleToAll = isTargetComponent
 			? current?.applyStyleToAll === true &&
-				current.activeStyleId === component.activeStyleId
+				current.activeStyleId === component.activeStyleId &&
+				Object.values(component.edges).every(
+					(edge) => edge.styleId === component.activeStyleId,
+				)
 			: (current?.applyStyleToAll ?? true);
 		if (current) {
 			scene.updateNode(
@@ -467,6 +508,7 @@ function commitSegment(
 		}
 		const network = RoadNetworkNode.parse({
 			parentId: levelId,
+			metadata: template?.metadata,
 			graphNodes: component.graphNodes,
 			edges: component.edges,
 			attachments: component.attachments,
@@ -483,22 +525,33 @@ function commitSegment(
 		for (const attachment of Object.values(network.attachments ?? {})) {
 			const asset = Object.values(scene.nodes).find(
 				(candidate) => candidate.id === attachment.assetNodeId,
-			) as unknown as {
-				id: string
-				roadAttachment?: { networkNodeId: string; attachmentId: string }
-			} | undefined;
+			) as unknown as
+				| {
+						id: string;
+						roadAttachment?: { networkNodeId: string; attachmentId: string };
+				  }
+				| undefined;
 			if (!asset) continue;
-			if (
-				asset.roadAttachment?.networkNodeId === network.id &&
-				asset.roadAttachment.attachmentId === attachment.id
-			) continue;
-			scene.updateNode(asset.id as AnyNodeId, {
-				roadAttachment: {
-					networkNodeId: network.id,
-					attachmentId: attachment.id,
-					side: attachment.side,
-				},
-			} as Partial<AnyNode>);
+			const transform = resolveRoadAttachmentTransform(
+				network,
+				attachment,
+				asset as unknown as Parameters<
+					typeof resolveRoadAttachmentTransform
+				>[2],
+			);
+			scene.updateNode(
+				asset.id as AnyNodeId,
+				{
+					...(transform
+						? { position: transform.position, rotation: transform.rotation }
+						: {}),
+					roadAttachment: {
+						networkNodeId: network.id,
+						attachmentId: attachment.id,
+						side: attachment.side,
+					},
+				} as Partial<AnyNode>,
+			);
 		}
 	}
 	for (const obsolete of existing.slice(components.length)) {
@@ -510,7 +563,7 @@ function commitSegment(
 			targetNetwork,
 			result.createdEdgeIds,
 		);
-		const nodesBeforeReconciliation = Object.values(useScene.getState().nodes);
+		const nodesBeforeReconciliation = Object.values(scene.nodes);
 		const nodeIdsToReplace = roadAutoInfrastructureNodeIdsToReplace({
 			edgeIds: affectedEdgeIds,
 			existingNodes: nodesBeforeReconciliation,
@@ -519,25 +572,29 @@ function commitSegment(
 		const removedIds = new Set(nodeIdsToReplace);
 		const generated = buildRoadAutoInfrastructurePlan({
 			edgeIds: affectedEdgeIds,
-			existingNodes: nodesBeforeReconciliation.filter((candidate) => !removedIds.has(candidate.id)),
+			existingNodes: nodesBeforeReconciliation.filter(
+				(candidate) => !removedIds.has(candidate.id),
+			),
 			network: targetNetwork,
 			settings: targetNetwork.roadsideAutoFillEnabled
 				? FULL_ROAD_AUTO_INFRASTRUCTURE_SETTINGS
 				: store.roadAutoInfrastructure,
 		});
 		const attachments = Object.fromEntries([
-			...Object.entries(targetNetwork.attachments ?? {}).filter(([, attachment]) =>
-				!removedIds.has(attachment.assetNodeId),
+			...Object.entries(targetNetwork.attachments ?? {}).filter(
+				([, attachment]) => !removedIds.has(attachment.assetNodeId),
 			),
 			...Object.entries(generated.attachments),
 		]);
 		if (generated.nodes.length > 0 || removedIds.size > 0) {
 			scene.applyNodeChanges({
 				delete: nodeIdsToReplace as AnyNodeId[],
-				update: [{
-					id: targetNetwork.id as AnyNodeId,
-					data: { attachments } as Partial<AnyNode>,
-				}],
+				update: [
+					{
+						id: targetNetwork.id as AnyNodeId,
+						data: { attachments } as Partial<AnyNode>,
+					},
+				],
 				create: generated.nodes.map((node) => ({
 					node: node as unknown as AnyNode,
 					parentId: levelId as AnyNodeId,
@@ -546,11 +603,122 @@ function commitSegment(
 			targetNetwork.attachments = attachments;
 		}
 	}
-	return targetNetwork;
+	for (const network of resolvedNetworks) {
+		const reconciled = reconcileRoadAttachments(network, scene.nodes);
+		Object.assign(network, reconciled.network);
+		scene.applyNodeChanges({
+			update: [
+				{
+					id: network.id as AnyNodeId,
+					data: { attachments: network.attachments, stylePresets: network.stylePresets, roadsideDecorations: network.roadsideDecorations } as Partial<AnyNode>,
+				},
+				...reconciled.update,
+			],
+		});
+	}
+	if (!targetNetwork) return null;
+	const remaps: Array<{
+		from: StreetIdentityReference;
+		to: StreetIdentityReference[];
+	}> = [];
+	for (let i = 0; i < existing.length; i++) {
+		const old = existing[i]!;
+		for (const id of Object.keys(old.edges)) {
+			const mergedId = merged.edgeIdMaps[i]![id]!;
+			const descendants = result.edgeIdRemap[mergedId] ?? [mergedId];
+			remaps.push({
+				from: { kind: "road-edge", networkId: old.id, id },
+				to: resolvedNetworks.flatMap((network) =>
+					descendants
+						.filter((edgeId) => Object.hasOwn(network.edges, edgeId))
+						.map((edgeId) => ({
+							kind: "road-edge" as const,
+							networkId: network.id,
+							id: edgeId,
+						})),
+				),
+			});
+		}
+		for (const id of Object.keys(old.graphNodes)) {
+			const mergedId = merged.nodeIdMaps[i]![id]!;
+			remaps.push({
+				from: { kind: "road-node", networkId: old.id, id },
+				to: resolvedNetworks
+					.filter((network) => Object.hasOwn(network.graphNodes, mergedId))
+					.map((network) => ({
+						kind: "road-node" as const,
+						networkId: network.id,
+						id: mergedId,
+					})),
+			});
+		}
+		if (!scene.nodes[old.id as AnyNodeId])
+			remaps.push({
+				from: { kind: "host-node", id: old.id },
+				to: resolvedNetworks
+					.filter((network) =>
+						Object.values(network.edges).some((edge) =>
+							Object.values(merged.edgeIdMaps[i]!).some((id) =>
+								(result.edgeIdRemap[id] ?? [id]).includes(edge.id),
+							),
+						),
+					)
+					.map((network) => ({ kind: "host-node" as const, id: network.id })),
+			});
+	}
+	for (const old of Object.values(state.nodes))
+		if (
+			old.type.startsWith("streetscape:") &&
+			!scene.nodes[old.id] &&
+			!remaps.some((r) => r.from.kind === "host-node" && r.from.id === old.id)
+		)
+			remaps.push({ from: { kind: "host-node", id: old.id }, to: [] });
+	const document = prepareRoadTopologyDocument({
+		before: state,
+		after: { ...state, nodes: scene.nodes },
+		siteId: expected.siteId!,
+		oldNetworks: existing,
+		networks: resolvedNetworks,
+		identityRemaps: remaps,
+	});
+	if (document) {
+        scene.applyNodeChanges({update:document.generatedItemUpdates as {id:AnyNodeId;data:Partial<AnyNode>}[]});
+		scene.updateNode(expected.siteId as AnyNodeId, {
+			metadata: document.metadata,
+		});
+		remaps.push(...document.identityRemaps);
+	}
+	return {
+		network: targetNetwork,
+		change: scene.finish(
+			"insert-road-segment",
+			"Create road segment and reconcile topology",
+			remaps,
+		),
+	};
+}
+
+function commitSegment(
+	levelId: string,
+	start: RoadPoint,
+	end: RoadPoint,
+	alignment: RoadPoint[],
+	tangentLength?: number,
+): RoadNetworkNode | null {
+	const prepared = prepareRoadSegmentCommand(
+		levelId,
+		start,
+		end,
+		alignment,
+		tangentLength,
+	);
+	if (!prepared) return null;
+	commitHostStreetChangeSet(prepared.change);
+	return prepared.network;
 }
 
 /** Multi-click centerline drafting for incremental straight legs or one spline. */
-export default function RoadNetworkTool() {
+export default function RoadNetworkTool({ renderPreview = true }: { renderPreview?: boolean } = {}) {
 	const activeLevelId = useViewer((state) => state.selection.levelId);
 	const cursorRef = useRef<Group>(null);
 	const cursorPointRef = useRef<RoadPoint | null>(null);
@@ -596,7 +764,8 @@ export default function RoadNetworkTool() {
 	);
 	const roadMedianWidth = useStreetscapeStore((state) => state.roadMedianWidth);
 	const draftStyle = useMemo(
-		() => buildRoadDraftStyle({
+		() =>
+			buildRoadDraftStyle({
 				laneCount: roadLaneCount,
 				laneWidth: roadLaneWidth,
 				medianWidth: roadMedianWidth,
@@ -615,7 +784,8 @@ export default function RoadNetworkTool() {
 		],
 	);
 	const style = useMemo(
-		() => applyRoadAutoInfrastructureClearances(draftStyle, roadAutoInfrastructure),
+		() =>
+			applyRoadAutoInfrastructureClearances(draftStyle, roadAutoInfrastructure),
 		[draftStyle, roadAutoInfrastructure],
 	);
 	const alignmentMode = useStreetscapeStore((state) => state.roadAlignmentMode);
@@ -667,12 +837,14 @@ export default function RoadNetworkTool() {
 		tangentLength,
 	]);
 	const previewOperation = draftPreview?.operation ?? null;
-	const invalidDraft = attemptedInvalid ?? (draftPreview ? roadDraftInvalidState(draftPreview) : null);
+	const invalidDraft =
+		attemptedInvalid ??
+		(draftPreview ? roadDraftInvalidState(draftPreview) : null);
 	const previewColor = invalidDraft
 		? "#ef4444"
 		: previewOperation
-		? ROAD_OPERATION_COLORS[previewOperation]
-		: undefined;
+			? ROAD_OPERATION_COLORS[previewOperation]
+			: undefined;
 	const previewPoints = useMemo(() => {
 		if (!start || !cursor) return [];
 		if (alignmentMode !== "spline" || splinePoints.length === 0)
@@ -716,8 +888,7 @@ export default function RoadNetworkTool() {
 		if (!numericEntry) return null;
 		let fallback = 0;
 		if (
-			(numericEntry.field === "length" ||
-				numericEntry.field === "bearing") &&
+			(numericEntry.field === "length" || numericEntry.field === "bearing") &&
 			start &&
 			cursor
 		) {
@@ -816,21 +987,17 @@ export default function RoadNetworkTool() {
 			// intentionally take priority over a conflicting magnetic pull.
 			const target =
 				graph && !hasDirectionalConstraint
-					? snapRoadDraftPoint(
-							graph,
-							rawPoint,
-							{
-								elevationMode: store.roadElevationMode,
-								joinMode: store.roadJoinMode,
-								level: store.roadElevationMode === "ground" ? 0 : 1,
-								nodeTolerance: Math.max(
-									0.5,
-									...existing.map((network) => network.snapTolerance),
-								),
-								stackLevel: store.roadElevationMode === "bridge" ? 1 : 0,
-								tolerance: roadMagneticSnapTolerance(existing),
-							},
-						)
+					? snapRoadDraftPoint(graph, rawPoint, {
+							elevationMode: store.roadElevationMode,
+							joinMode: store.roadJoinMode,
+							level: store.roadElevationMode === "ground" ? 0 : 1,
+							nodeTolerance: Math.max(
+								0.5,
+								...existing.map((network) => network.snapTolerance),
+							),
+							stackLevel: store.roadElevationMode === "bridge" ? 1 : 0,
+							tolerance: roadMagneticSnapTolerance(existing),
+						})
 					: null;
 			if (target) {
 				clearRoadAlignmentGuides();
@@ -1031,10 +1198,7 @@ export default function RoadNetworkTool() {
 			return roadDraftMetrics(startRef.current, cursorPointRef.current)[field];
 		};
 		const openNumericEntry = (field: RoadDraftNumericField) => {
-			if (
-				(field === "length" || field === "bearing") &&
-				!startRef.current
-			) {
+			if ((field === "length" || field === "bearing") && !startRef.current) {
 				return false;
 			}
 			updateNumericEntry({ buffer: "", field });
@@ -1122,12 +1286,19 @@ export default function RoadNetworkTool() {
 					});
 					return;
 				}
-				if (/^[0-9]$/.test(key) || (key === "." && !entry.buffer.includes(".")) || (key === "-" && entry.buffer.length === 0)) {
+				if (
+					/^[0-9]$/.test(key) ||
+					(key === "." && !entry.buffer.includes(".")) ||
+					(key === "-" && entry.buffer.length === 0)
+				) {
 					consumeNumericKey(event);
 					updateNumericEntry({ ...entry, buffer: `${entry.buffer}${key}` });
 					return;
 				}
-				const requestedField: Record<string, RoadDraftNumericField | undefined> = {
+				const requestedField: Record<
+					string,
+					RoadDraftNumericField | undefined
+				> = {
 					a: "bearing",
 					l: "length",
 					r: "radius",
@@ -1140,17 +1311,21 @@ export default function RoadNetworkTool() {
 				return;
 			}
 
-			const requestedField: Record<string, RoadDraftNumericField | undefined> = {
-				a: "bearing",
-				l: "length",
-				r: "radius",
-				t: "tangent",
-			};
+			const requestedField: Record<string, RoadDraftNumericField | undefined> =
+				{
+					a: "bearing",
+					l: "length",
+					r: "radius",
+					t: "tangent",
+				};
 			if (requestedField[key] && openNumericEntry(requestedField[key]!)) {
 				consumeNumericKey(event);
 				return;
 			}
-			if (key === "backspace" && (splinePointsRef.current.length > 0 || startRef.current)) {
+			if (
+				key === "backspace" &&
+				(splinePointsRef.current.length > 0 || startRef.current)
+			) {
 				if (splinePointsRef.current.length > 0) {
 					updateSplinePoints(splinePointsRef.current.slice(0, -1));
 				} else if (startRef.current) {
@@ -1201,7 +1376,7 @@ export default function RoadNetworkTool() {
 		};
 	}, [activeLevelId]);
 
-	if (!activeLevelId) return null;
+	if (!activeLevelId || !renderPreview) return null;
 	return (
 		<group layers={EDITOR_LAYER} ref={cursorRef}>
 			{snapTarget ? (
@@ -1224,7 +1399,7 @@ export default function RoadNetworkTool() {
 			) : null}
 			{previewPoints.length >= 2 && cursor ? (
 				<group position={[-cursor[0], -cursor[1], -cursor[2]]}>
-					{draftSnapMode === 'angle' && !snapTarget && start ? (
+					{draftSnapMode === "angle" && !snapTarget && start ? (
 						<RoadAngleSnapRay end={cursor} start={start} />
 					) : null}
 					<RoadDraftPreviewSurface

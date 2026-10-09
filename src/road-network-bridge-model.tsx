@@ -76,11 +76,12 @@ function BridgePrism({
 
 /** Structural bridge geometry generated from bridge-mode road edges. */
 export function RoadNetworkBridgeStructures({
-	node,
+	node, compiledSpans,
 }: {
+	compiledSpans?:ReturnType<typeof buildRoadBridgeSpans>;
 	node: RoadNetworkNode;
 }) {
-	const spans = useMemo(() => buildRoadBridgeSpans(node), [node]);
+	const spans = useMemo(() => compiledSpans ?? buildRoadBridgeSpans(node), [node,compiledSpans]);
 	if (spans.length === 0) return null;
 	const pierDiameter = node.bridgePierDiameter ?? 1.1;
 	return (

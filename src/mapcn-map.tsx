@@ -7,10 +7,10 @@ import type * as GeoJSON from "geojson";
 
 // The host serves plugin bundles through an HTML fallback route. MapLibre's
 // inferred worker URL can therefore resolve to HTML instead of JavaScript.
-// Pin the worker to the published module so the map initializes in the host.
+// Match the worker protocol to the installed renderer, including semver upgrades.
 if (typeof window !== "undefined") {
   MapLibreGL.setWorkerUrl(
-    "https://unpkg.com/maplibre-gl@6.7.0/dist/maplibre-gl-worker.mjs",
+    `https://unpkg.com/maplibre-gl@${MapLibreGL.getVersion()}/dist/maplibre-gl-worker.mjs`,
   );
 }
 import {

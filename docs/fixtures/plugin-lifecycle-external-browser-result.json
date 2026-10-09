@@ -1,0 +1,43 @@
+{
+  "browser": "External Chrome",
+  "url": "http://localhost:3002/streetscape-step25-qa",
+  "ok": true,
+  "checks": [
+    {
+      "name": "defaults applied without scene Canvas",
+      "passed": true
+    },
+    {
+      "name": "obsolete custom payload retained",
+      "passed": true
+    },
+    {
+      "name": "second open identical",
+      "passed": true
+    },
+    {
+      "name": "second open no extra history",
+      "passed": true
+    },
+    {
+      "name": "find listener count unchanged after replacement",
+      "passed": true
+    },
+    {
+      "name": "stale disposer leaves replacement active",
+      "passed": true
+    },
+    {
+      "name": "hot reload preserves scene",
+      "passed": true
+    },
+    {
+      "name": "hot reload no extra history",
+      "passed": true
+    },
+    {
+      "name": "dispose removes catalog listener",
+      "passed": true
+    }
+  ]
+}

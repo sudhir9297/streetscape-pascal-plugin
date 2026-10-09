@@ -1,0 +1,292 @@
+{
+  "imported": {
+    "format": "streetscape-project",
+    "schemaVersion": 1,
+    "id": "project-imported",
+    "name": "OSM block reconstruction",
+    "revision": 0,
+    "siteFrameId": "site-frame-example",
+    "sourceReferences": {
+      "osm-snapshot": {
+        "id": "osm-snapshot",
+        "provider": "openstreetmap",
+        "acquiredAt": "2026-10-08T09:00:00Z",
+        "contentIdentity": null,
+        "snapshot": {
+          "status": "embedded",
+          "format": "overpass-json",
+          "data": {
+            "elements": [
+              {
+                "type": "node",
+                "id": 10,
+                "lat": 0,
+                "lon": 0,
+                "tags": {
+                  "highway": "street_lamp"
+                }
+              },
+              {
+                "type": "way",
+                "id": 20,
+                "nodes": [
+                  1,
+                  2
+                ],
+                "tags": {
+                  "highway": "residential",
+                  "width": "unknown"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "baselineRevisions": {
+      "baseline-1": {
+        "id": "baseline-1",
+        "parentRevisionId": null,
+        "acceptedAt": "2026-10-08T10:00:00Z",
+        "sourceReferenceIds": [
+          "osm-snapshot"
+        ],
+        "roads": {
+          "road-block": {
+            "id": "road-block",
+            "origin": "imported",
+            "sourceReferenceIds": [
+              "osm-snapshot"
+            ],
+            "representation": "pascal-road-network-v1",
+            "data": {
+              "id": "road-network_example",
+              "type": "streetscape:road-network",
+              "graphNodes": {
+                "a": {
+                  "id": "a",
+                  "position": [
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "b": {
+                  "id": "b",
+                  "position": [
+                    20,
+                    1,
+                    0
+                  ]
+                }
+              },
+              "edges": {
+                "ab": {
+                  "id": "ab",
+                  "startNodeId": "a",
+                  "endNodeId": "b",
+                  "alignment": [
+                    [
+                      10,
+                      0.5,
+                      2
+                    ]
+                  ],
+                  "styleId": "local-street"
+                }
+              },
+              "roadsideItemSuppressed": {
+                "generated-lamp:1": true
+              }
+            }
+          }
+        },
+        "features": {
+          "lamp-observation": {
+            "id": "lamp-observation",
+            "kind": "point-asset",
+            "origin": "imported",
+            "sourceReferenceIds": [
+              "osm-snapshot"
+            ],
+            "sourceFeatureId": "node/10",
+            "representation": "osm-import-v1",
+            "data": {
+              "kind": "street-lamp",
+              "position": [
+                5,
+                0.25,
+                3
+              ],
+              "elevationSource": "terrain"
+            }
+          }
+        }
+      }
+    },
+    "activeBaselineRevisionId": "baseline-1",
+    "scenarios": {
+      "proposal": {
+        "id": "proposal",
+        "name": "Sidewalk proposal",
+        "baselineRevisionId": "baseline-1"
+      }
+    },
+    "activeScenarioId": "proposal",
+    "siteFrames": {
+      "site-frame-example": {
+        "format": "streetscape-site-frame",
+        "schemaVersion": 1,
+        "id": "site-frame-example",
+        "projection": "equirectangular-local-v1",
+        "units": "metres",
+        "origin": {
+          "lat": 0,
+          "lon": 0
+        },
+        "orientationRadians": 0,
+        "verticalReference": {
+          "kind": "unknown"
+        }
+      }
+    }
+  },
+  "authored": {
+    "format": "streetscape-project",
+    "schemaVersion": 1,
+    "id": "project-authored",
+    "name": "Manually drawn street",
+    "revision": 0,
+    "siteFrameId": null,
+    "sourceReferences": {},
+    "baselineRevisions": {
+      "baseline-1": {
+        "id": "baseline-1",
+        "parentRevisionId": null,
+        "acceptedAt": "2026-10-08T10:00:00Z",
+        "sourceReferenceIds": [],
+        "roads": {
+          "road-block": {
+            "id": "road-block",
+            "origin": "authored",
+            "sourceReferenceIds": [],
+            "representation": "pascal-road-network-v1",
+            "data": {
+              "id": "road-network_example",
+              "type": "streetscape:road-network",
+              "graphNodes": {
+                "a": {
+                  "id": "a",
+                  "position": [
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "b": {
+                  "id": "b",
+                  "position": [
+                    20,
+                    1,
+                    0
+                  ]
+                }
+              },
+              "edges": {
+                "ab": {
+                  "id": "ab",
+                  "startNodeId": "a",
+                  "endNodeId": "b",
+                  "alignment": [
+                    [
+                      10,
+                      0.5,
+                      2
+                    ]
+                  ],
+                  "styleId": "local-street"
+                }
+              },
+              "roadsideItemSuppressed": {
+                "generated-lamp:1": true
+              }
+            }
+          }
+        },
+        "features": {}
+      }
+    },
+    "activeBaselineRevisionId": "baseline-1",
+    "scenarios": {},
+    "activeScenarioId": null
+  },
+  "legacy": {
+    "format": "streetscape-project",
+    "schemaVersion": 1,
+    "id": "project-legacy",
+    "name": "Existing road scene",
+    "revision": 0,
+    "siteFrameId": null,
+    "sourceReferences": {},
+    "baselineRevisions": {
+      "baseline-1": {
+        "id": "baseline-1",
+        "parentRevisionId": null,
+        "acceptedAt": "2026-10-08T10:00:00Z",
+        "sourceReferenceIds": [],
+        "roads": {
+          "road-block": {
+            "id": "road-block",
+            "origin": "legacy-authored",
+            "sourceReferenceIds": [],
+            "representation": "pascal-road-network-v1",
+            "data": {
+              "id": "road-network_example",
+              "type": "streetscape:road-network",
+              "graphNodes": {
+                "a": {
+                  "id": "a",
+                  "position": [
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "b": {
+                  "id": "b",
+                  "position": [
+                    20,
+                    1,
+                    0
+                  ]
+                }
+              },
+              "edges": {
+                "ab": {
+                  "id": "ab",
+                  "startNodeId": "a",
+                  "endNodeId": "b",
+                  "alignment": [
+                    [
+                      10,
+                      0.5,
+                      2
+                    ]
+                  ],
+                  "styleId": "local-street"
+                }
+              },
+              "roadsideItemSuppressed": {
+                "generated-lamp:1": true
+              }
+            }
+          }
+        },
+        "features": {}
+      }
+    },
+    "activeBaselineRevisionId": "baseline-1",
+    "scenarios": {},
+    "activeScenarioId": null
+  }
+}

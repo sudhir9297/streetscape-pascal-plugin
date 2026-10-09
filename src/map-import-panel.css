@@ -42,7 +42,7 @@
   min-height: 72px;
   padding: 14px 18px;
   border-color: var(--map-border) !important;
-  background: rgb(14 19 24 / 94%);
+  background: var(--map-panel);
 }
 
 .streetscape-map-dialog form {
@@ -56,7 +56,7 @@
   min-height: 42px;
   border: 1px solid var(--map-border-strong) !important;
   border-radius: 10px !important;
-  background: #0a0f13 !important;
+  background: var(--map-bg) !important;
   color: var(--map-text) !important;
   font-size: 14px;
   letter-spacing: 0.005em;
@@ -102,7 +102,7 @@
   border-color: var(--map-accent-strong) !important;
   border-radius: 10px !important;
   background: var(--map-accent-strong) !important;
-  color: #06131b !important;
+  color: var(--primary-foreground, #06131b) !important;
   font-size: 13px;
   font-weight: 700;
   transition: filter 150ms ease-out, transform 150ms ease-out;
@@ -132,7 +132,7 @@
 }
 
 .streetscape-map-dialog .map-workspace {
-  background: #0a1015;
+  background: var(--map-bg);
   display: grid;
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -197,7 +197,7 @@
 .streetscape-map-dialog .map-card {
   border: 1px solid var(--map-border) !important;
   border-radius: 10px !important;
-  background: rgb(27 37 46 / 62%) !important;
+  background: color-mix(in srgb, var(--map-panel-raised) 62%, var(--map-bg)) !important;
   padding: 14px !important;
   color: var(--map-muted);
   font-size: 12px;
@@ -288,4 +288,35 @@
   .streetscape-map-dialog * {
     transition-duration: 0ms !important;
   }
+}
+
+.streetscape-map-dialog .map-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--map-muted);
+}
+
+.streetscape-map-dialog .map-progress li {
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+
+.streetscape-map-dialog .map-progress [aria-current='step'] {
+  background: var(--map-panel-raised);
+  color: var(--map-text);
+  font-weight: 600;
+}
+
+.streetscape-map-dialog .map-sidebar-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--map-border-strong) transparent;
+}
+
+.streetscape-map-dialog button[aria-pressed='true'] {
+  background: var(--map-panel-raised);
+  border-color: var(--map-accent);
 }

@@ -11,14 +11,20 @@ import {
 	resetRoadEdgeStyle,
 } from "./road-network-style-editing";
 import { RoadNetworkNode } from "./schema";
-import { createEmptyRoadGraph, insertRoadSegment } from "./road-network-topology";
+import {
+	createEmptyRoadGraph,
+	insertRoadSegment,
+} from "./road-network-topology";
 
 describe("road cross-section inspector editing", () => {
 	test("edits roadway and side values without mutating another preset", () => {
 		const node = RoadNetworkNode.parse({ activeStyleId: "local-street" });
 		const arterialBefore = node.stylePresets.arterial;
 		const roadway = editRoadNetworkDefaultRoadway(node, "laneCount", 5.6);
-		const withRoadway = RoadNetworkNode.parse({ ...node, stylePresets: roadway });
+		const withRoadway = RoadNetworkNode.parse({
+			...node,
+			stylePresets: roadway,
+		});
 		const side = editRoadNetworkDefaultSide(
 			withRoadway,
 			"left",
@@ -35,10 +41,14 @@ describe("road cross-section inspector editing", () => {
 
 	test("clamps direct inspector values to schema ranges", () => {
 		const node = RoadNetworkNode.parse({});
-		expect(editRoadNetworkDefaultRoadway(node, "laneWidth", 99)["local-street"]?.laneWidth)
-			.toBe(5);
-		expect(editRoadNetworkDefaultSide(node, "right", "curbWidth", -3)["local-street"]
-			?.rightSide?.curbWidth).toBe(0);
+		expect(
+			editRoadNetworkDefaultRoadway(node, "laneWidth", 99)["local-street"]
+				?.laneWidth,
+		).toBe(5);
+		expect(
+			editRoadNetworkDefaultSide(node, "right", "curbWidth", -3)["local-street"]
+				?.rightSide?.curbWidth,
+		).toBe(0);
 	});
 
 	test("renders shared roadside sliders and per-side parking and bike sliders", () => {
@@ -70,7 +80,11 @@ describe("road cross-section inspector editing", () => {
 	});
 
 	test("creates an edge-local style while preserving the network default", () => {
-		const first = insertRoadSegment(createEmptyRoadGraph(), [0, 0, 0], [10, 0, 0]);
+		const first = insertRoadSegment(
+			createEmptyRoadGraph(),
+			[0, 0, 0],
+			[10, 0, 0],
+		);
 		const second = insertRoadSegment(first.graph, [10, 0, 0], [20, 0, 0]);
 		let node = RoadNetworkNode.parse(second.graph);
 		const edgeIds = Object.keys(node.edges).sort();
@@ -78,7 +92,13 @@ describe("road cross-section inspector editing", () => {
 		const otherId = edgeIds[1]!;
 		const roadway = editRoadEdgeRoadway(node, targetId, "laneCount", 4)!;
 		node = RoadNetworkNode.parse({ ...node, ...roadway });
-		const side = editRoadEdgeSide(node, targetId, "right", "parkingLaneWidth", 2.4)!;
+		const side = editRoadEdgeSide(
+			node,
+			targetId,
+			"right",
+			"parkingLaneWidth",
+			2.4,
+		)!;
 		node = RoadNetworkNode.parse({ ...node, ...side });
 
 		expect(node.applyStyleToAll).toBe(false);
@@ -86,13 +106,14 @@ describe("road cross-section inspector editing", () => {
 		expect(node.stylePresets["local-street"]?.laneCount).toBe(2);
 		expect(node.stylePresets[node.edges[targetId]!.styleId]?.laneCount).toBe(4);
 		expect(
-			node.stylePresets[node.edges[targetId]!.styleId]?.rightSide?.parkingLaneWidth,
+			node.stylePresets[node.edges[targetId]!.styleId]?.rightSide
+				?.parkingLaneWidth,
 		).toBe(2.4);
 		expect(node.edges[otherId]?.styleId).toBe("local-street");
 
 		const reset = resetRoadEdgeStyle(node, targetId)!;
 		expect(reset.edges[targetId]?.styleId).toBe("local-street");
-		expect(reset.stylePresets[`edge-style:${targetId}`]).toBeUndefined();
+		expect(reset.stylePresets[`edge-style~${targetId}`]).toBeUndefined();
 	});
 
 	test("applies a shared roadside width to both sides of every segment in a plus network", () => {
@@ -101,12 +122,9 @@ describe("road cross-section inspector editing", () => {
 			[-12, 0, 0],
 			[12, 0, 0],
 		);
-		const crossed = insertRoadSegment(
-			through.graph,
-			[0, 0, -12],
-			[0, 0, 12],
-			{ tolerance: 0.1 },
-		);
+		const crossed = insertRoadSegment(through.graph, [0, 0, -12], [0, 0, 12], {
+			tolerance: 0.1,
+		});
 		let node = RoadNetworkNode.parse(crossed.graph);
 		const selectedEdgeId = Object.keys(node.edges)[0]!;
 		const edgeStylePatch = editRoadEdgeRoadway(
@@ -140,4 +158,29 @@ describe("road cross-section inspector editing", () => {
 			expect(style.rightSide?.sidewalkWidth).toBe(2.25);
 		}
 	});
+});
+
+test("correcting one segment preserves other effective styles when a common preset is active", () => {
+	const node = RoadNetworkNode.parse({
+		applyStyleToAll: true,
+		activeStyleId: "collector",
+		graphNodes: {
+			a: { id: "a", position: [0, 0, 0] },
+			b: { id: "b", position: [20, 0, 0] },
+			c: { id: "c", position: [40, 0, 0] },
+		},
+		edges: {
+			ab: { id: "ab", startNodeId: "a", endNodeId: "b", styleId: "alley" },
+			bc: { id: "bc", startNodeId: "b", endNodeId: "c", styleId: "arterial" },
+		},
+	});
+	const patch = editRoadEdgeRoadway(node, "ab", "laneWidth", 4)!;
+	const next = RoadNetworkNode.parse({ ...node, ...patch });
+	expect(next.applyStyleToAll).toBe(false);
+	expect(next.stylePresets[next.edges.ab!.styleId]!.laneWidth).toBe(4);
+	expect(next.edges.bc!.styleId).toBe("collector");
+	expect(next.stylePresets[next.edges.bc!.styleId]).toEqual(
+		node.stylePresets.collector,
+	);
+	expect(node.edges.bc!.styleId).toBe("arterial");
 });

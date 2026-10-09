@@ -1,3 +1,4 @@
+import type { AnyNodeId } from "@pascal-app/core";
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
@@ -93,6 +94,8 @@ describe("semantic roadside decoration rules", () => {
 		const deletionPatches = roadSignParametrics.onDelete?.(
 			result.node as never,
 			{ [updatedRoad.id]: updatedRoad, [result.node.id]: result.node } as never,
+            new Set<AnyNodeId>([result.node.id as AnyNodeId]),
+            new Set<AnyNodeId>([result.node.id as AnyNodeId]),
 		) ?? [];
 		expect(deletionPatches).toHaveLength(1);
 		expect(String(deletionPatches[0]!.id)).toBe(String(network.id));

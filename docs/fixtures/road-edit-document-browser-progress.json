@@ -1,0 +1,38 @@
+{
+  "checks": [
+    {
+      "name": "preparation leaves accepted geometry and document untouched",
+      "pass": true
+    },
+    {
+      "name": "scene and document share one undo entry",
+      "pass": true
+    },
+    {
+      "name": "document revision advances",
+      "pass": true
+    },
+    {
+      "name": "historical baseline is retained unchanged",
+      "pass": true
+    },
+    {
+      "name": "accepted baseline compiles the edited geometry",
+      "pass": true
+    },
+    {
+      "name": "new geometry has authored evidence",
+      "pass": true
+    },
+    {
+      "name": "undo restores both geometry and complete document",
+      "pass": true
+    },
+    {
+      "name": "stale preview cannot replace the newer scene or document",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "url": "http://localhost:3002/"
+}
