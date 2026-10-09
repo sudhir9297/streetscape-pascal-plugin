@@ -729,6 +729,15 @@ test.each([
 	});
 	const stored = readStreetProjectFromSite(useScene.getState().nodes[site.id])!;
 	expect(stored).not.toBeNull();
+	const acceptedSite = useScene.getState().nodes[site.id] as unknown as {
+		terrain?: { type: string };
+		metadata: Record<string, unknown>;
+	};
+	expect(acceptedSite.terrain?.type).toBe("heightfield");
+	expect(acceptedSite.metadata.osmTerrainProjection).toMatchObject({
+		basis: "estimated-road-grade-v1",
+		roadNodeIds: ids,
+	});
 	const baseline =
 		stored.project.baselineRevisions[stored.project.activeBaselineRevisionId]!;
 	expect(Object.values(baseline.roads)[0]!.representation).toBe(
@@ -743,3 +752,27 @@ test.each([
 	useScene.temporal.getState().undo();
 	expect(useScene.getState().nodes).toEqual(before);
 });
+
+test("a retained site frame survives missing projections and controls the next import review", () => {
+	const site = SiteNode.parse({ id: "site_frame-retained", children: ["building_frame-retained"] });
+	const building = BuildingNode.parse({ id: "building_frame-retained", parentId: site.id, children: [LEVEL_ID] });
+	const old = useScene.getState();
+	useScene.setState({ nodes: { ...old.nodes, [site.id]: site, [building.id]: building, [LEVEL_ID]: LevelNode.parse({ ...old.nodes[LEVEL_ID], parentId: building.id }) }, rootNodeIds: [site.id] });
+	const project = createLegacyStreetProject({ id: "retained", name: "Retained", baselineRevisionId: "old", acceptedAt: "2026-10-08T09:00:00Z", roads: [] });
+	const frame = createSiteFrame({ id: "survey-frame", origin: { lat: 0, lon: 0 }, orientationRadians: Math.PI / 2, verticalReference: { kind: "relative-to-elevation", originElevationMeters: 0, datumId: "test-datum" } });
+	project.siteFrameId = frame.id;
+	project.siteFrames[frame.id] = frame;
+	const stored = prepareStreetProjectPersistence(useScene.getState(), site.id, { project, projection: { baselineRevisionId: "old", scenarioId: null, bindings: [] }, expectedRevision: null });
+	useScene.getState().applyNodeChanges({ update: [{ id: site.id, data: { metadata: stored.metadata } }] });
+	const context = getOsmImportSceneContext(LEVEL_ID);
+	expect(context.networks).toHaveLength(0);
+	expect(context.coordinateFrame).toEqual(frame);
+	const result = importResult(1);
+	result.graphs = [insertRoadSegment(createEmptyRoadGraph(), [10, 0, 0], [20, 0, 0]).graph];
+	result.coordinateFrame = createOsmSiteFrame({ center: frame.origin, baseElevation: 0, verticalDatumId: "test-datum" });
+	const reviewed = reviewOsmImport(result, context);
+	expect(reviewed.result.coordinateFrame).toEqual(frame);
+	const points = Object.values(reviewed.result.graphs[0]!.graphNodes).map(node => node.position);
+	expect(points.every(point => Math.abs(point[0]) < 1e-6)).toBe(true);
+	expect(points.map(point => point[2]).sort((a, b) => a - b)).toEqual([10, 20]);
+})

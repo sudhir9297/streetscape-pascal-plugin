@@ -28,6 +28,7 @@ import { buildRoadsideDecorationPreviews } from "./roadside-decoration-rules";
 import { validateRoadGraph } from "./road-network-validation";
 import { compileStreetJunctions } from "./street-compiler-junctions";
 import { buildMappedSurfaceMesh } from "./road-mapped-surface-plan";
+import { buildMappedCrosswalkMarkings } from "./road-mapped-crossing-plan";
 
 /** Explicit effective model is the entire input; no host/editor/view state is consulted. */
 export function compileStreet(
@@ -82,6 +83,7 @@ function compileEffectiveStreet(
 		),
 		...compileSectionMarkings(node, sectionSurfaces),
 		...junctionMovementPlan.markings,
+		...buildMappedCrosswalkMarkings(node),
 	];
 	const placements = buildRoadsideDecorationPreviews(node);
 	const diagnostics = validateRoadGraph(node);

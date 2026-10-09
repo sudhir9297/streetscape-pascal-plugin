@@ -1,4 +1,5 @@
 "use client";
+import { waitForImportFeedbackFrame } from "./import-feedback-frame";
 import { SourceRefreshInspector } from "./source-refresh-inspector";
 import { ScenarioEffectiveInspector } from "./scenario-effective-inspector";
 import { StreetScenarioInspector } from "./street-scenario-inspector";
@@ -44,7 +45,6 @@ import { MapGlobeView } from "./map-globe-view";
 import {
 	clampMapZoom,
 	DEFAULT_MAP_ZOOM,
-	GLOBE_FLAT_THRESHOLD_ZOOM,
 } from "./map-tiles";
 import { type GeocodeResult, searchPlaces } from "./osm-geocode";
 import type { GeoPoint } from "./osm-elevation";
@@ -81,6 +81,7 @@ const PRIMARY_BUTTON_CLASS =
 
 const PHASE_LABELS: Record<OsmImportPhase, string> = {
 	streets: "Fetching streets and mapped objects",
+	elevation: "Loading elevations",
 	building: "Building road network",
 };
 
@@ -114,7 +115,7 @@ function fitZoomForRadius(centerLat: number, radiusMeters: number): number {
 }
 
 type Status = { kind: "success" | "error" | "info"; message: string };
-type BusyState = "search" | "preview" | OsmImportPhase;
+type BusyState = "search" | "preview" | "accept" | OsmImportPhase;
 
 function isCancelled(error: unknown, signal: AbortSignal): boolean {
 	return (
@@ -133,15 +134,6 @@ function newRoadSegmentLabel(count: number): string {
 
 function mappedObjectLabel(count: number): string {
 	return `${count} mapped object${count === 1 ? "" : "s"}`;
-}
-
-function importSelectionLabel(segments: number, objects: number): string {
-	return `Accept ${[
-		segments > 0 ? roadSegmentLabel(segments) : "",
-		objects > 0 ? mappedObjectLabel(objects) : "",
-	]
-		.filter(Boolean)
-		.join(" + ")}`;
 }
 
 function mappedObjectSummary(counts: OsmPointAssetCounts): string {
@@ -272,7 +264,6 @@ function MapImportDialog({
 	);
 	const [review, setReview] = useState<OsmImportReview | null>(null);
 	const [busy, setBusy] = useState<BusyState | null>(null);
-	const [locating, setLocating] = useState(false);
 	const [resolveBaseline, setResolveBaseline] = useState(true);
 	const [status, setStatus] = useState<Status | null>(null);
 
@@ -293,6 +284,7 @@ function MapImportDialog({
 	}, [prepared, busy, open]);
 
 	const close = () => {
+		if (busy === "accept") return;
 		activeRequestRef.current?.abort();
 		setLoadedBaseline(null);
 		acceptancePreconditions.current = null;
@@ -332,36 +324,6 @@ function MapImportDialog({
 		setZoom(Math.max(fitZoomForRadius(nextCenter.lat, radius), PLACE_ZOOM - 1));
 		if (!keepResults) setResults([]);
 		setQuery(place.label);
-	};
-
-	const useMyLocation = () => {
-		if (!navigator.geolocation || busy || locating) return;
-		setLocating(true);
-		setStatus(null);
-		navigator.geolocation.getCurrentPosition(
-			(position) => {
-				const nextCenter = {
-					lat: position.coords.latitude,
-					lon: position.coords.longitude,
-				};
-				recenter(nextCenter);
-				setResults([]);
-				setQuery("");
-				setZoom(fitZoomForRadius(nextCenter.lat, radius));
-				setLocating(false);
-			},
-			(error) => {
-				setLocating(false);
-				setStatus({
-					kind: "error",
-					message:
-						error.code === error.PERMISSION_DENIED
-							? "Location access was denied. Allow it in your browser settings to use this option."
-							: "Your current location could not be determined.",
-				});
-			},
-			{ enableHighAccuracy: false, maximumAge: 60_000, timeout: 10_000 },
-		);
 	};
 
 	const runSearch = async () => {
@@ -410,7 +372,10 @@ function MapImportDialog({
 		const controller = new AbortController();
 		activeRequestRef.current = controller;
 		setStatus(null);
+		setBusy("building");
+		await waitForImportFeedbackFrame();
 		try {
+			controller.signal.throwIfAborted();
 			const expected = captureOsmImportPreconditions(activeLevelId);
 			const result = await completeOsmStreetImport(prepared, {
 				onPhase: setBusy,
@@ -465,7 +430,7 @@ function MapImportDialog({
 		}
 	};
 
-	const acceptBaseline = () => {
+	const acceptBaseline = async () => {
 		if (
 			!activeLevelId ||
 			!loadedBaseline ||
@@ -474,6 +439,9 @@ function MapImportDialog({
 			busy
 		)
 			return;
+		setBusy("accept");
+		// Present the import feedback before the synchronous, atomic scene change.
+		await waitForImportFeedbackFrame();
 		try {
 			const finalReview = reviewOsmImport(
 				loadedBaseline,
@@ -500,6 +468,8 @@ function MapImportDialog({
 						? error.message
 						: "Baseline acceptance failed.",
 			});
+		} finally {
+			setBusy(null);
 		}
 	};
 
@@ -581,7 +551,7 @@ function MapImportDialog({
 	};
 
 	const importing = busy !== null && busy !== "search" && busy !== "preview";
-	const modeLabel = zoom < GLOBE_FLAT_THRESHOLD_ZOOM ? "Globe" : "Map";
+	const busyTitle = busy === "accept" ? "Adding streets to scene" : busy === "search" ? "Searching for a location" : busy === "preview" ? "Loading street preview" : "Preparing import";
 
 	return (
 		<dialog
@@ -619,7 +589,7 @@ function MapImportDialog({
 							disabled={busy !== null}
 							onChange={(event) => setQuery(event.target.value)}
 							aria-label="Search a place or paste latitude, longitude"
-							placeholder="Search a place or paste latitude, longitude"
+							placeholder="Search location"
 							type="search"
 							value={query}
 						/>
@@ -633,6 +603,7 @@ function MapImportDialog({
 					</form>
 					<button
 						aria-label="Close map import"
+							disabled={busy === "accept"}
 						className="map-close grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground text-xl leading-none transition-[background-color,transform] duration-150 hover:bg-accent hover:text-foreground active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-40"
 						onClick={close}
 						type="button"
@@ -641,32 +612,18 @@ function MapImportDialog({
 					</button>
 				</header>
 
-				<nav
-					aria-label="Street import progress"
-					className="border-b px-5 py-2 text-xs"
-				>
-					<ol className="map-progress">
-						{[
-							"Select area",
-							"Load sources",
-							"Review baseline",
-							"Accept into project",
-						].map((label, index) => (
-							<li
-								key={label}
-								aria-current={
-									index === (loadedBaseline ? 3 : prepared ? 2 : busy === "preview" ? 1 : 0)
-										? "step"
-										: undefined
-								}
-							>
-								{index + 1}. {label}
-							</li>
-						))}
-					</ol>
-				</nav>
+				{busy && (
+					<div className="map-loading" role="status" aria-live="polite" aria-atomic="true">
+						<span className="map-loading-spinner" aria-hidden="true" />
+						<div>
+							<strong>{busy === "elevation" || busy === "building" || busy === "streets" ? PHASE_LABELS[busy] : busyTitle}…</strong>
+						</div>
+						<div className="map-loading-track" aria-hidden="true"><span /></div>
+					</div>
+				)}
 
 				<div
+					aria-busy={busy !== null}
 					className="map-workspace grid min-h-0 flex-1 grid-cols-1 overflow-y-auto md:grid-cols-[minmax(0,1fr)_300px] md:overflow-hidden"
 					style={{
 						gridTemplateColumns: "minmax(0, 1fr) 300px",
@@ -708,56 +665,13 @@ function MapImportDialog({
 
 					<aside className="map-sidebar flex min-w-0 min-h-0 flex-col gap-5 overflow-hidden p-5">
 						<div className="map-sidebar-content">
-							<section>
-								<p className="font-medium text-sm">Selected location</p>
-								<p className="mt-1 font-mono text-muted-foreground text-xs">
-									{center.lat.toFixed(5)}, {center.lon.toFixed(5)}
-								</p>
-								<p className="mt-1 text-muted-foreground text-xs">
-									{modeLabel} view
-								</p>
-							</section>
-							<button
-								className={`${SECONDARY_BUTTON_CLASS} w-full`}
-								disabled={
-									busy !== null ||
-									locating ||
-									typeof navigator === "undefined" ||
-									!navigator.geolocation
-								}
-								onClick={useMyLocation}
-								type="button"
-							>
-								{locating ? "Finding your location…" : "Use my location"}
-							</button>
-
-							<div className="grid grid-cols-2 gap-2">
-								<button
-									aria-label="Zoom out"
-									className={SECONDARY_BUTTON_CLASS}
-									disabled={busy !== null}
-									onClick={() => setZoom(clampMapZoom(zoom - 1))}
-									type="button"
-								>
-									− Zoom out
-								</button>
-								<button
-									aria-label="Zoom in"
-									className={SECONDARY_BUTTON_CLASS}
-									disabled={busy !== null}
-									onClick={() => setZoom(clampMapZoom(zoom + 1))}
-									type="button"
-								>
-									+ Zoom in
-								</button>
-							</div>
 							<button
 								className={`${SECONDARY_BUTTON_CLASS} w-full`}
 								disabled={busy !== null}
 								onClick={() => setZoom(fitZoomForRadius(center.lat, radius))}
 								type="button"
 							>
-								Fit import radius
+								Fit area
 							</button>
 
 							<div
@@ -765,7 +679,7 @@ function MapImportDialog({
 							>
 								<div className="map-radius-heading">
 									<label htmlFor="streetscape-import-radius">
-										Import radius
+										Radius
 									</label>
 									<output htmlFor="streetscape-import-radius">
 										{radius} m
@@ -778,7 +692,7 @@ function MapImportDialog({
 									max={MAX_IMPORT_RADIUS_M}
 									min={MIN_IMPORT_RADIUS_M}
 									onChange={(event) => changeRadius(Number(event.target.value))}
-									step={25}
+									step={5}
 									type="range"
 									value={radius}
 								/>
@@ -788,6 +702,16 @@ function MapImportDialog({
 								</div>
 							</div>
 
+							{prepared && review && (
+								<section className="map-selection-summary" aria-label="Import data summary" aria-live="polite">
+									<div><span>Streets</span><strong>{review.newSegments}</strong></div>
+									<div><span>Objects</span><strong>{review.newAssets}</strong></div>
+								</section>
+							)}
+
+							<details className="map-details">
+								<summary>{baselineDiagnostics?.status === "blocked" ? "Details · resolve errors" : "Details"}</summary>
+								<div className="map-details-content">
 							<label className="mt-3 block text-xs">
 								Street data source
 								<select
@@ -814,10 +738,6 @@ function MapImportDialog({
 									</option>
 								</select>
 							</label>
-							<p className="text-xs text-muted-foreground">
-								If one service is unavailable, select the other and preview
-								again. The map and place search work independently.
-							</p>
 							{sourceReport && (
 								<SourceNormalizationReport report={sourceReport} />
 							)}
@@ -875,91 +795,6 @@ function MapImportDialog({
 									</p>
 								</section>
 							)}
-							{prepared && review && (
-								<section
-									className="map-card rounded-lg border border-border bg-muted/35 p-3"
-									aria-label="Import data summary"
-								>
-									<p className="font-medium text-sm">Import summary</p>
-									<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-										<div className="flex justify-between gap-2">
-											<span className="text-muted-foreground">Mapped ways</span>
-											<span className="font-medium">
-												{prepared.preview.wayCount}
-											</span>
-										</div>
-										<div className="flex justify-between gap-2">
-											<span className="text-muted-foreground">
-												Street segments
-											</span>
-											<span className="font-medium">
-												{review.newSegments} new
-											</span>
-										</div>
-										<div className="flex justify-between gap-2">
-											<span className="text-muted-foreground">
-												Mapped objects
-											</span>
-											<span className="font-medium">
-												{review.newAssets} new
-											</span>
-										</div>
-										<div className="flex justify-between gap-2">
-											<span className="text-muted-foreground">
-												Import radius
-											</span>
-											<span className="font-medium">{radius} m</span>
-										</div>
-									</div>
-									{(review.duplicateSegments > 0 ||
-										review.duplicateAssets > 0 ||
-										review.trimmedSegments > 0) && (
-										<p className="mt-2 border-border border-t pt-2 text-muted-foreground text-[11px] leading-relaxed">
-											{review.duplicateSegments > 0 &&
-												`${review.duplicateSegments} duplicate segment${review.duplicateSegments === 1 ? "" : "s"} skipped. `}
-											{review.duplicateAssets > 0 &&
-												`${review.duplicateAssets} duplicate object${review.duplicateAssets === 1 ? "" : "s"} skipped. `}
-											{review.trimmedSegments > 0 &&
-												`${review.trimmedSegments} segment${review.trimmedSegments === 1 ? "" : "s"} clipped to the import boundary.`}
-										</p>
-									)}
-								</section>
-							)}
-
-							<div className="map-card rounded-lg border border-border bg-muted/35 p-3 text-muted-foreground text-xs leading-relaxed">
-								Solid streets and colored objects will be imported inside the
-								selected area. Dashed streets provide surrounding junction
-								context and will not be placed. Yellow, red, and blue dots
-								preview lamps, traffic signals, and signs. The first import sets
-								this level's map origin; later areas line up with it. Available
-								terrain and mapped elevations shape the imported road profiles.
-							</div>
-
-							{!activeLevelId && (
-								<p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 text-xs dark:text-amber-300">
-									Open a level before importing streets.
-								</p>
-							)}
-
-							{status && (
-								<p
-									className={`rounded-lg border p-3 text-xs leading-relaxed ${
-										status.kind === "error"
-											? "border-destructive/30 bg-destructive/10 text-destructive"
-											: status.kind === "success"
-												? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-												: "border-border bg-muted/50 text-muted-foreground"
-									}`}
-									role="status"
-								>
-									{status.message}
-								</p>
-							)}
-						</div>
-						<div
-							ref={importActionRef}
-							className="map-import-actions border-border border-t pt-4"
-						>
 							<label className="mb-3 flex gap-2 text-xs">
 								<input
 									type="checkbox"
@@ -970,16 +805,34 @@ function MapImportDialog({
 								/>
 								Keep an inspectable baseline
 							</label>
+								</div>
+							</details>
+
+							{!activeLevelId && (
+								<p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 text-xs dark:text-amber-300">
+									Open a level before importing streets.
+								</p>
+							)}
+
+							{status?.kind === "error" && (
+								<p
+									className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+									role="status"
+								>
+									{status.message}
+								</p>
+							)}
+						</div>
+						<div
+							ref={importActionRef}
+							className="map-import-actions border-border border-t pt-4"
+						>
 							{prepared && (
 								<section
 									aria-label="Import driving side"
 									className="mb-3 rounded border border-border p-3 text-xs"
 								>
-									<p className="font-medium">
-										{prepared.regionalPolicy.status === "confirmed"
-											? `Driving side confirmed: ${prepared.regionalPolicy.id === "left-driving" ? "left" : "right"}.`
-											: "Choose the driving side to enable import."}
-									</p>
+									<p className="font-medium">Driving side</p>
 									<div className="mt-2 flex gap-2">
 										{(["left-driving", "right-driving"] as const).map((id) => (
 											<button
@@ -992,6 +845,7 @@ function MapImportDialog({
 												}
 												className="rounded border p-2"
 												onClick={() => {
+													if (prepared.regionalPolicy.status === "confirmed" && prepared.regionalPolicy.id === id) return;
 													const policy = confirmStreetRegionalPolicy(
 														prepared.regionalPolicy,
 														id,
@@ -1007,7 +861,7 @@ function MapImportDialog({
 													});
 												}}
 											>
-												{id === "left-driving" ? "Drive on left" : "Drive on right"}
+												{id === "left-driving" ? "Left" : "Right"}
 											</button>
 										))}
 									</div>
@@ -1016,45 +870,40 @@ function MapImportDialog({
 							<button
 								className={`${PRIMARY_BUTTON_CLASS} w-full`}
 								disabled={
-									!busy &&
+									busy === "accept" || (!busy &&
 									prepared !== null &&
 									(baselineDiagnostics?.status === "blocked" ||
 										prepared.regionalPolicy.status !== "confirmed" ||
 										!activeLevelId ||
-										(review?.newSegments === 0 && review.newAssets === 0))
+										(review?.newSegments === 0 && review.newAssets === 0)))
 								}
 								onClick={() =>
 									busy
 										? cancelRequest()
 										: prepared
 											? loadedBaseline
-												? acceptBaseline()
+												? void acceptBaseline()
 												: void runImport()
 											: void runPreview()
 								}
 								type="button"
 							>
-								{busy === "search"
+								{busy === "accept"
+									? "Adding streets to scene…"
+									: busy === "search"
 									? "Cancel search"
 									: busy === "preview"
-										? "Cancel · Fetching street preview…"
+										? "Cancel preview"
 										: importing
-											? `Cancel · ${PHASE_LABELS[busy as OsmImportPhase]}…`
+											? "Cancel preparation"
 											: prepared
 												? review?.newSegments === 0 && review.newAssets === 0
 													? "Nothing new to import"
 													: loadedBaseline
-														? importSelectionLabel(
-																review?.newSegments ??
-																	prepared.preview.segmentCount,
-																review?.newAssets ?? 0,
-															)
-														: "Load baseline for review"
-												: "Preview streets and objects"}
+														? "Import streets"
+: "Prepare import"
+												: "Preview streets"}
 							</button>
-							<p className="mt-2 text-center text-[11px] text-muted-foreground">
-								One import creates one undoable editor change.
-							</p>
 						</div>
 					</aside>
 				</div>
@@ -1195,7 +1044,7 @@ export function MapImportSection() {
 				onClick={() => setOpen(true)}
 				type="button"
 			>
-				Open map workspace
+				Open map
 			</button>
 
 			{importSuccess && (
@@ -1206,6 +1055,9 @@ export function MapImportSection() {
 					{importSuccess}
 				</p>
 			)}
+			<details className="text-xs text-sidebar-foreground/60">
+				<summary className="cursor-pointer">Project details</summary>
+				<div className="mt-3 flex flex-col gap-3">
 			{savedProject && <BaselineProjectInspection project={savedProject} />}
 			{savedBaselineDiagnostics && (
 				<BaselineDiagnosticInspection report={savedBaselineDiagnostics} />
@@ -1272,11 +1124,13 @@ export function MapImportSection() {
 				</section>
 			)}
 			<ImageryReferenceReview />
+				</div>
+			</details>
 			<MapImportDialog
 				activeLevelId={activeLevelId}
 				onImported={(review) =>
 					setImportSuccess(
-						`Added ${roadSegmentLabel(review.newSegments)} and ${mappedObjectLabel(review.newAssets)} to this level. Use 2D or 3D to inspect them; Undo removes the import.`,
+						`Added ${roadSegmentLabel(review.newSegments)} and ${mappedObjectLabel(review.newAssets)}.`,
 					)
 				}
 				onOpenChange={setOpen}

@@ -52,9 +52,10 @@ function laneUseList(
 		return [...backwardValues].reverse().concat(bothValues, forwardValues);
 	};
 	const bus = directionalValues("bus");
+	const psv = directionalValues("psv");
 	const bicycle = directionalValues("bicycle");
 	return Array.from({ length: laneCount }, (_, index) => {
-		if (bus?.[index] === "designated" || bus?.[index] === "yes") return "bus";
+		if (bus?.[index] === "designated" || psv?.[index] === "designated") return "bus";
 		if (bicycle?.[index] === "designated" || bicycle?.[index] === "yes")
 			return "bicycle";
 		return "general";
@@ -174,7 +175,19 @@ export function buildOsmRoadStyle(
 		lanes(tags.lanes) ??
 		(directional && directional <= 12 ? directional : undefined) ??
 		(oneWay ? (forward ?? backward) : undefined) ??
-		(link || service ? 1 : 2);
+		(oneWay || link || service ? 1 : 2);
+	// OSM lanes counts all motor lanes, including bus lanes. Represent a
+	// mapped busway as a use of that lane, rather than an extra pavement band.
+	const hasMappedLaneCount = lanes(tags.lanes) !== undefined || directional !== undefined ||
+		(oneWay && (forward !== undefined || backward !== undefined));
+	const busSides = Number((leftSide.busLaneWidth ?? 0) > 0) + Number((rightSide.busLaneWidth ?? 0) > 0);
+	const laneUses = laneUseList(tags, laneCount, forward, backward, lanes(tags["lanes:both_ways"]) ?? 0);
+	if (hasMappedLaneCount && busSides <= laneCount) {
+		if ((leftSide.busLaneWidth ?? 0) > 0) laneUses[0] = "bus";
+		if ((rightSide.busLaneWidth ?? 0) > 0) laneUses[laneCount - 1] = "bus";
+		leftSide.busLaneWidth = 0;
+		rightSide.busLaneWidth = 0;
+	}
 	const roadsidePavement =
 		leftSide.parkingLaneWidth +
 		rightSide.parkingLaneWidth +
@@ -272,13 +285,7 @@ export function buildOsmRoadStyle(
 		laneWidth,
 		laneWidths,
 		laneDirections,
-		laneUses: laneUseList(
-			tags,
-			laneCount,
-			forward,
-			backward,
-			lanes(tags["lanes:both_ways"]) ?? 0,
-		),
+		laneUses,
 		dimensionSources: {
 			laneCount: {
 				kind: laneCountTag ? "mapped" : "default",

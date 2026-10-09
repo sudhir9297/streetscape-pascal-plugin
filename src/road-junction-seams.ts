@@ -1,4 +1,5 @@
 import { ShapeUtils, Vector2 } from 'three'
+import { unionRoadSurfaceMeshes } from './road-surface-union'
 import { ROAD_SIDE_COMPONENT_SPECS, type RoadSideComponentKind } from './road-cross-section'
 import {
   buildJunctionBoundarySidePaths,
@@ -92,6 +93,8 @@ export function triangulateRoadBoundary(
 }
 
 type JunctionSurfaceRegion = {
+	/** Seam geometry already fitted to the sampled road mouths, in junction-local coordinates. */
+	surface?: RoadSurfaceGeometryData
 	center: readonly [number, number, number]
 	solution: { boundary: readonly (readonly [number, number])[]; holes?: readonly (readonly (readonly [number, number])[])[] }
 	/** Roads on different vertical structures must never share a surface region. */
@@ -128,21 +131,6 @@ function polygonsOverlap(a: readonly (readonly [number, number])[], b: readonly 
 	return pointInPolygon(a[0]!, b) || pointInPolygon(b[0]!, a)
 }
 
-function convexHull(points: readonly (readonly [number, number])[]) {
-	const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1])
-	const lower: Array<readonly [number, number]> = []
-	for (const point of sorted) {
-		while (lower.length >= 2 && orient2d(lower.at(-2)!, lower.at(-1)!, point) <= 1e-8) lower.pop()
-		lower.push(point)
-	}
-	const upper: Array<readonly [number, number]> = []
-	for (const point of sorted.slice().reverse()) {
-		while (upper.length >= 2 && orient2d(upper.at(-2)!, upper.at(-1)!, point) <= 1e-8) upper.pop()
-		upper.push(point)
-	}
-	return lower.slice(0, -1).concat(upper.slice(0, -1))
-}
-
 /**
  * Resolve overlapping junction patches into one shared region. This keeps
  * short connector roads from drawing two coplanar asphalt faces on top of one
@@ -161,10 +149,11 @@ export function mergeCollidingJunctionSurfaces(
 		const right = find(j)
 		if (left !== right) parent[right] = left
 	}
-	const merged = regions.map((region) => triangulateRoadBoundary(
+	const merged = regions.map((region) => region.surface ?? triangulateRoadBoundary(
 		region.solution.boundary.map(([x, z]) => [x, 0, z] as const),
 		(region.solution.holes ?? []).map((hole) => hole.map(([x, z]) => [x, 0, z] as const)),
 	))
+	const originals = [...merged]
 	for (let i = 0; i < regions.length; i++) {
 		if (find(i) !== i) {
 			merged[i] = { positions: [], indices: [] }
@@ -172,20 +161,25 @@ export function mergeCollidingJunctionSurfaces(
 		}
 		const members = regions.map((_, index) => index).filter((index) => find(index) === i)
 		if (members.length < 2) continue
-		const worldHull = convexHull(members.flatMap((index) => polygons[index]!))
-		const local = worldHull.map(([x, z]) => [x - regions[i]!.center[0], 0, z - regions[i]!.center[2]] as const)
-		const worldHoles = members.flatMap((index) => (regions[index]!.solution.holes ?? []).map((hole) => hole.map(([x, z]) => [x + regions[index]!.center[0], z + regions[index]!.center[2]] as const)))
-		const holes = worldHoles
-			.filter((hole) => hole.every((point) => pointInPolygon(point, worldHull)))
-			.map((hole) => hole.map(([x, z]) => [x - regions[i]!.center[0], 0, z - regions[i]!.center[2]] as const))
-		merged[i] = triangulateRoadBoundary(local, holes)
+		const meshes = members.map((index) => {
+			const region = regions[index]!
+			const dx = region.center[0] - regions[i]!.center[0]
+			const dz = region.center[2] - regions[i]!.center[2]
+			const dy = region.center[1] - regions[i]!.center[1]
+			const surface = originals[index]!
+			return {
+				indices: surface.indices,
+				positions: surface.positions.map((value, offset) => value + (offset % 3 === 0 ? dx : offset % 3 === 1 ? dy : dz)),
+			}
+		})
+		merged[i] = unionRoadSurfaceMeshes(meshes)
 	}
 	return merged
 }
 
 /** Shared mouth coordinates make asphalt, curbs and sidewalks meet the same ribbon ends. */
 export function buildRoadJunctionSeams(
-  solution: JunctionBoundaryGeometryData,
+  solution: JunctionBoundaryGeometryData & { holes?: readonly (readonly (readonly [number, number])[])[] },
   center: readonly [number, number, number],
   mouths: Readonly<Record<string, RoadJunctionMouth>>,
 ): {
@@ -256,5 +250,8 @@ export function buildRoadJunctionSeams(
       }
     }
   }
-  return { asphalt: triangulateRoadBoundary(boundary), bands }
+  return {
+    asphalt: triangulateRoadBoundary(boundary, (solution.holes ?? []).map(hole => hole.map(([x, z]) => [x, 0, z] as const))),
+    bands,
+  }
 }

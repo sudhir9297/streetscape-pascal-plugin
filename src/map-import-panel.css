@@ -320,3 +320,73 @@
   background: var(--map-panel-raised);
   border-color: var(--map-accent);
 }
+
+.streetscape-map-dialog .map-loading {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 17px;
+  background: var(--map-panel-raised);
+  border-bottom: 1px solid var(--map-border);
+  font-size: 12px;
+}
+.streetscape-map-dialog .map-loading-spinner {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px solid var(--map-border-strong);
+  border-top-color: var(--map-text);
+  border-radius: 50%;
+  animation: streetscape-loading-spin 900ms linear infinite;
+  will-change: transform;
+}
+.streetscape-map-dialog .map-loading-track {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  overflow: hidden;
+  background: var(--map-border);
+}
+.streetscape-map-dialog .map-loading-track span {
+  display: block;
+  width: 30%;
+  height: 100%;
+  background: var(--map-text);
+  animation: streetscape-loading-progress 1600ms linear infinite;
+  will-change: transform;
+}
+@keyframes streetscape-loading-spin { to { transform: rotate(360deg); } }
+@keyframes streetscape-loading-progress { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) {
+  .streetscape-map-dialog .map-loading-spinner,
+  .streetscape-map-dialog .map-loading-track span { animation: none; }
+}
+
+.streetscape-map-dialog .map-selection-summary {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--map-border);
+  border-bottom: 1px solid var(--map-border);
+  font-size: 13px;
+}
+.streetscape-map-dialog .map-selection-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.streetscape-map-dialog .map-selection-summary span { color: var(--map-muted); }
+.streetscape-map-dialog .map-selection-summary strong { font-weight: 500; font-variant-numeric: tabular-nums; }
+.streetscape-map-dialog .map-details > summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--map-muted);
+}
+.streetscape-map-dialog .map-details-content { display: grid; gap: 16px; padding-top: 12px; }
+.streetscape-map-dialog .map-loading { padding: 10px 18px 13px; }
+.streetscape-map-dialog .map-loading strong { font-weight: 500; }
+.streetscape-map-dialog [aria-label='Import driving side'] { border: 0; padding: 0; }
+.streetscape-map-dialog [aria-label='Import driving side'] button { flex: 1; min-height: 36px; }

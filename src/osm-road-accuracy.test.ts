@@ -1,12 +1,12 @@
 import { buildJunctionBoundaryGeometry } from './road-network-geometry'
 import { expect, test } from 'bun:test'
-import { importStreetsFromOsm, localToGeo } from './osm-import'
+import { importStreetsFromOsm, localToGeo, type OsmWay } from './osm-import'
 import { buildRoadCrossSection } from './road-cross-section'
 
 const center = { lat: 40.758, lon: -73.9855 }
 async function street(tags: Record<string, string>) {
   const result = await importStreetsFromOsm(center, 100, {
-    loadStreets: async () => [
+    loadStreets: async (): Promise<OsmWay[]> => [
       {
         id: 123,
         tags,
@@ -73,6 +73,33 @@ test('a one-way motorway ramp is a single carriageway', async () => {
   expect(style.laneCount).toBe(1)
   expect(style.medianWidth).toBe(0)
   expect(style.leftSide!.sidewalkWidth).toBe(0)
+})
+
+test('Grande Armée six-lane total includes its two bus lanes only once', async () => {
+  const style = await street({ highway: 'primary', lanes: '6', 'lanes:forward': '3',
+    'lanes:backward': '3', 'busway:both': 'lane', 'psv:lanes:backward': 'yes|yes|designated', surface: 'sett' })
+  expect(style.laneCount).toBe(6)
+  expect(style.laneUses).toEqual(['bus', 'general', 'general', 'general', 'general', 'bus'])
+  expect(style.leftSide!.busLaneWidth).toBe(0)
+  expect(style.rightSide!.busLaneWidth).toBe(0)
+  expect(buildRoadCrossSection(style).carriagewayWidth).toBeCloseTo(19.2)
+})
+
+test('bus access does not reserve an ordinary traffic lane', async () => {
+  const style = await street({ highway: 'primary', lanes: '2', 'bus:lanes': 'yes|designated', width: '6.4' })
+  expect(style.laneUses).toEqual(['general', 'bus'])
+  expect(buildRoadCrossSection(style).carriagewayWidth).toBeCloseTo(6.4)
+})
+
+test('uncounted one-way residential streets use an explicit single-lane estimate', async () => {
+  const style = await street({ highway: 'residential', oneway: 'yes', name: "Rue d’Argentine" })
+  expect(style.laneCount).toBe(1)
+  expect(style.laneDirections).toEqual(['forward'])
+  expect(style.dimensionSources!.laneCount!.kind).toBe('default')
+  expect(buildRoadCrossSection(style).carriagewayWidth).toBeCloseTo(3.2)
+  const counted = await street({ highway: 'residential', oneway: 'yes', lanes: '2' })
+  expect(counted.laneCount).toBe(2)
+  expect(counted.dimensionSources!.laneCount!.kind).toBe('mapped')
 })
 
 test('mapped pavement width includes parking and bicycle lanes only once', async () => {
@@ -159,6 +186,22 @@ test('nearby mapped entrances fit their curb returns between junctions', async (
     )!
     expect(solution.approachCuts[connector.id]).toBeLessThan(6)
   }
+})
+
+test('a clipped T approach reserves space only for its actual junction', async () => {
+  const result = await importStreetsFromOsm(center, 15, {
+    loadStreets: async (): Promise<OsmWay[]> => [
+      { id: 470987535, tags: { highway: 'primary', lanes: '6', sidewalk: 'both' },
+        points: [[-30, 0], [0, 0], [30, 0]].map(([x, z], i) => ({ ...localToGeo([x!, z!], center), nodeId: i + 1 })) },
+      { id: 8413426, tags: { highway: 'residential', oneway: 'yes', sidewalk: 'no' },
+        points: [[0, 0], [0, 30]].map(([x, z], i) => ({ ...localToGeo([x!, z!], center), nodeId: i === 0 ? 2 : 4 })) },
+    ],
+  })
+  const graph = result.graphs[0]!
+  expect(Object.values(graph.edges)).toHaveLength(3)
+  const junction = Object.values(graph.junctions)[0]!
+  expect(junction.kind).toBe('tee')
+  expect(Math.max(...Object.values(junction.cornerRadii))).toBeGreaterThan(0.5)
 })
 
 test('road import preserves the mapped surface through graph assembly', async () => {

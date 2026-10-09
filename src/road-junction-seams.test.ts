@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { compileStreetLayout } from './street-compiler-layout'
 import {
   buildRoadJunctionSeams,
   mergeCollidingJunctionSurfaces,
@@ -316,4 +317,37 @@ test('captured Times Square roads produce matching mouths for every imported jun
   }
   expect(junctions.length).toBe(19)
   expect(checked).toBeGreaterThanOrEqual(57)
+})
+
+test('merged fitted seams retain each junction elevation relative to the owner', () => {
+  const boundary = [[-3, -2], [3, -2], [3, 2], [-3, 2]] as const
+  const surface = triangulateRoadBoundary(boundary.map(([x, z]) => [x, x * 0.1, z] as const))
+  const merged = mergeCollidingJunctionSurfaces([
+    { center: [0, 5, 0], solution: { boundary }, surface },
+    { center: [4, 5.4, 0], solution: { boundary }, surface },
+  ])
+  for (let i = 0; i < merged[0]!.positions.length; i += 3) {
+    expect(merged[0]!.positions[i + 1]!).toBeCloseTo(merged[0]!.positions[i]! * 0.1, 8)
+  }
+  expect(merged[1]!.positions).toEqual([])
+  expect(surface.positions[1]).toBeCloseTo(-0.3, 8)
+})
+
+
+test('the compiler preserves sloped mouth heights in its rendered junction asphalt', () => {
+  let graph = createEmptyRoadGraph()
+  for (const end of [[40, 4, 0], [-40, -2, 0], [0, 1, 40]] as [number, number, number][]) {
+    graph = insertRoadSegment(graph, [0, 0, 0], end).graph
+  }
+  const node = RoadNetworkNode.parse({ ...graph, applyStyleToAll: false })
+  const layout = compileStreetLayout(node)
+  const junction = layout.renderedJunctionSurfaces.find(j => j.graphNode.position.every(value => value === 0))!
+  const heights = junction.solution.positions.filter((_, i) => i % 3 === 1)
+  expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.1)
+  for (const { profile } of layout.edgeSurfaces) {
+    const atEnd = profile.endNodeId === junction.graphNode.id
+    const mouth = roadJunctionMouth(profile, atEnd)
+    const expectedHeight = mouth.sample.point[1] - junction.graphNode.position[1]
+    expect(heights.some(value => Math.abs(value - expectedHeight) < 1e-6)).toBe(true)
+  }
 })

@@ -241,6 +241,16 @@ export function sampleRoadEdgePoints(
 	const start = network.graphNodes[edge.startNodeId];
 	const end = network.graphNodes[edge.endNodeId];
 	if (!start || !end) return [];
+	// Ordinary OSM vertices describe a mapped polyline, not spline handles.
+	// Circular routes can interpolate through their vertices; ordinary corners
+	// stay on their source spans. Designed profiles use the editor's spline.
+	const sourceJunction = edge.osmSource?.tags.junction;
+	const circularSource = sourceJunction === "circular" || sourceJunction === "roundabout";
+	if (edge.osmSource && !circularSource && edge.profileMode !== "designed") {
+		return [start.position, ...edge.alignment, end.position].map(
+			point => [...point] as RoadGeometryPoint,
+		);
+	}
 	if (edge.profileMode === "designed") {
 		const planStart: RoadGeometryPoint = [
 			start.position[0],

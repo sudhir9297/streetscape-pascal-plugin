@@ -1,5 +1,7 @@
 'use client'
 
+import { buildMappedCrossingRampGeometry, buildMappedTactilePadGeometry, crossingRoadHeight, resolveMappedCrossingPose, type MappedCrossing } from './road-mapped-crossing-plan'
+
 import {buildMappedSurfaceMesh,mappedSurfaceColor} from "./road-mapped-surface-plan";
 import {maskMappedComponentsForProfile} from "./road-mapped-band-mask";
 export {maskMappedComponentsForProfile} from "./road-mapped-band-mask";
@@ -510,49 +512,55 @@ type MappedSurface = {
   holes?: Array<Array<readonly [number, number, number]>>
 }
 
-function RoadMappedCrossing({ crossing, ghost = false, roadWidth = 7 }: { crossing: { id: number; kind?: 'crossing' | 'kerb'; point: readonly [number, number, number]; rotationY?: number; tags: Record<string, string> }; ghost?: boolean; roadWidth?: number }) {
+function RoadMappedCrossing({ crossing, network, ghost = false, roadWidth = 7 }: { network: RoadNetworkNode; crossing: { id: number; kind?: 'crossing' | 'kerb'; point: readonly [number, number, number]; rotationY?: number; associatedEdgeId?: string; tags: Record<string, string> }; ghost?: boolean; roadWidth?: number }) {
+  crossing = useMemo(() => resolveMappedCrossingPose(network,crossing), [network,crossing])
   const lowered = crossing.tags.kerb === 'lowered' || crossing.tags.kerb === 'flush' || crossing.tags.kerb === 'no'
   const kerbOnly = crossing.kind === 'kerb'
   const geometry = useMemo(() => {
     const result = createRoadGeometry()
-    const width = kerbOnly ? 1.2 : 2.4
-    const sidewalkY = lowered ? 0.06 : 0.105
-    const roadY = 0.018
-    const rows = kerbOnly
-      ? [[-0.225, sidewalkY], [0, roadY], [0.225, sidewalkY]]
-      : [
-          [-(roadWidth / 2 + 0.8), sidewalkY],
-          [-roadWidth / 2, roadY],
-          [roadWidth / 2, roadY],
-          [roadWidth / 2 + 0.8, sidewalkY],
-        ]
-    const positions = rows.flatMap(([z, y]) => [-width / 2, y!, z!, width / 2, y!, z!])
-    const indices = rows.slice(1).flatMap((_, index) => {
-      const base = index * 2
-      return [base, base + 2, base + 1, base + 2, base + 3, base + 1]
-    })
+    const {positions, indices} = buildMappedCrossingRampGeometry(crossing, roadWidth, crossingRoadHeight(network, crossing))
     result.setAttribute('position', new Float32BufferAttribute(positions, 3))
     result.setIndex(indices)
-    result.computeVertexNormals()
-    result.computeBoundingBox()
-    result.computeBoundingSphere()
+    if (positions.length) {
+      result.computeVertexNormals()
+      result.computeBoundingBox()
+      result.computeBoundingSphere()
+    }
     return result
-  }, [kerbOnly, lowered, roadWidth])
+  }, [crossing, network, roadWidth])
   useRoadGeometryLifecycle(geometry)
+  if (!geometry.getAttribute('position').count && crossing.tags.tactile_paving !== 'yes') return null
   return (
     <group position={crossing.point} rotation={[0, crossing.rotationY ?? 0, 0]}>
       <mesh geometry={geometry} name={`road-mapped-${kerbOnly ? 'kerb-ramp' : 'crossing-ramp'}:${crossing.id}`} raycast={NO_RAYCAST} receiveShadow>
         <meshStandardMaterial color={lowered ? '#d6d0b5' : '#aaa79f'} depthWrite={!ghost} opacity={ghost ? 0.48 : 1} roughness={0.9} transparent={ghost} />
       </mesh>
       {!ghost ? <RoadPavementShell top={geometry} thickness={0.1} color={lowered ? '#aaa58f' : '#898780'} /> : null}
-      {!ghost && !kerbOnly && crossing.tags.tactile_paving === 'yes' ? [-1, 1].map((side) => (
-        <mesh key={side} name={`road-mapped-tactile-pad:${crossing.id}`} position={[0, 0.11, side * (roadWidth / 2 + 0.38)]} raycast={NO_RAYCAST} receiveShadow>
-          <boxGeometry args={[2.1, 0.025, 0.45]} />
-          <meshStandardMaterial color="#d4b94f" roughness={0.95} />
-        </mesh>
+      {!ghost && crossing.tags.tactile_paving === 'yes' ? (kerbOnly ? [0] : [-1, 1]).map(side => (
+        <RoadMappedTactilePad key={side} crossing={crossing} network={network} width={kerbOnly ? 1.2 : 2.1} centerZ={side * (roadWidth / 2 + 0.38)} />
       )) : null}
     </group>
   )
+}
+
+function RoadMappedTactilePad({crossing, network, width, centerZ}: {crossing: MappedCrossing; network: RoadNetworkNode; width: number; centerZ: number}) {
+  const geometry = useMemo(() => {
+    const result = createRoadGeometry()
+    const mesh = buildMappedTactilePadGeometry(crossing,width,centerZ,crossingRoadHeight(network,crossing))
+    result.setAttribute('position',new Float32BufferAttribute(mesh.positions,3))
+    result.setIndex(mesh.indices)
+    result.computeVertexNormals()
+    result.computeBoundingBox()
+    result.computeBoundingSphere()
+    return result
+  }, [crossing,network,width,centerZ])
+  useRoadGeometryLifecycle(geometry)
+  return <>
+    <mesh geometry={geometry} name={`road-mapped-tactile-pad:${crossing.id}`} raycast={NO_RAYCAST} receiveShadow>
+      <meshStandardMaterial color="#d4b94f" roughness={0.95} />
+    </mesh>
+    <RoadPavementShell top={geometry} thickness={0.025} color="#b6a248" />
+  </>
 }
 
 function RoadMappedSurface({ surface, mesh:compiledMesh, ghost = false }: { surface: MappedSurface; mesh?:ReturnType<typeof buildMappedSurfaceMesh>; ghost?: boolean }) {
@@ -926,6 +934,7 @@ export function RoadNetworkModel({
         <RoadMappedCrossing
           key={`osm-crossing:${crossing.id}`}
           crossing={crossing}
+          network={node}
           roadWidth={crossing.associatedEdgeId && node.edges[crossing.associatedEdgeId]
             ? roadCarriagewayWidth(resolveStyle(node, node.edges[crossing.associatedEdgeId]!) ?? DEFAULT_ROAD_STYLE_PRESETS['local-street'])
             : undefined}

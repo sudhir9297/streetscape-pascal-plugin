@@ -95,7 +95,6 @@ describe('road side-menu authoring controls', () => {
   test('exposes roadway dimensions and independent left/right components', () => {
     const source = readFileSync(new URL('./presets-panel.tsx', import.meta.url), 'utf8')
 
-    expect(source).toContain('Road cross-section')
     expect(source).toContain('aria-label="Road preset"')
     expect(source).toContain("{ label: 'Roadway', value: 'roadway' }")
     expect(source).toContain("{ label: 'Left', value: 'left' }")

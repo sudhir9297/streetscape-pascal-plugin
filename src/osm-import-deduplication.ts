@@ -51,6 +51,8 @@ type ExistingRoadNetwork = RoadNetworkGraph &
 	};
 
 export type OsmImportSceneContext = {
+	/** Retained project frame is authoritative even when no projected roads remain. */
+	coordinateFrame?: SiteFrame;
 	featureSourceIds: ReadonlySet<string>;
 	networks: readonly ExistingRoadNetwork[];
 };
@@ -478,7 +480,12 @@ export function reviewOsmImport(
 	result: OsmImportResult,
 	context: OsmImportSceneContext,
 ): OsmImportReview {
-	const origin = findMapImportOrigin(context.networks) ?? {
+	const retainedFrame = context.coordinateFrame;
+	const origin = retainedFrame ? {
+		center: { ...retainedFrame.origin },
+		baseElevation: retainedFrame.verticalReference.kind === "relative-to-elevation" ? retainedFrame.verticalReference.originElevationMeters : null,
+		...(retainedFrame.verticalReference.kind === "relative-to-elevation" ? { verticalDatumId: retainedFrame.verticalReference.datumId } : {}),
+	} : findMapImportOrigin(context.networks) ?? {
 		baseElevation: result.source.baseElevation,
 		center: { ...result.source.center },
 		...(result.coordinateFrame?.verticalReference.kind ===
@@ -492,7 +499,7 @@ export function reviewOsmImport(
 			center: result.source.center,
 			baseElevation: result.source.baseElevation,
 		});
-	const toFrame = createOsmSiteFrame(origin);
+	const toFrame = retainedFrame ?? createOsmSiteFrame(origin);
 	const verticalOffset = siteFrameVerticalOffset(fromFrame, toFrame);
 	const translatedGraphs = result.graphs.map((graph) =>
 		transformRoadCoordinates(

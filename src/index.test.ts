@@ -922,7 +922,6 @@ describe('Streetscape plugin manifest', () => {
 
     const panel = readFileSync(new URL('./presets-panel.tsx', import.meta.url), 'utf8')
     expect(panel).toContain('data-road-auto-infrastructure')
-    expect(panel).toContain('Automatic infrastructure')
     expect(panel).toContain('Add automatically')
     const roadsideInspector = readFileSync(new URL('./roadside-decoration-rules.tsx', import.meta.url), 'utf8')
     expect(panel).not.toContain('Selected road items')

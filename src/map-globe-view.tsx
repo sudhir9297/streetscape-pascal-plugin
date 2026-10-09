@@ -238,33 +238,15 @@ export function MapGlobeView({
 							transform: "translateX(-50%)",
 						}}
 					>
-						{radiusMeters} m selected area
+						{radiusMeters} m
 					</div>
 				)}
 			</div>
 			{!showSelectionRadius && (
 				<div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/45 px-2 py-1 text-[10px] text-white/80 backdrop-blur-sm">
-					Zoom in to see the {radiusMeters} m selected area
+					Zoom in to see the {radiusMeters} m
 				</div>
 			)}
-			{streetPreview?.scope && (
-				<div className="pointer-events-none absolute bottom-7 left-2 rounded bg-black/75 px-2 py-1 text-[10px] text-white">
-					Solid: selected streets · Dashed: supporting context (+
-					{streetPreview.scope.contextMarginMeters} m)
-				</div>
-			)}
-			<div className="pointer-events-none absolute bottom-1 right-2 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-white/75">
-				<a
-					className="underline-offset-2 hover:underline"
-					href="https://www.openstreetmap.org/copyright"
-					onPointerDown={(event) => event.stopPropagation()}
-					rel="noreferrer"
-					target="_blank"
-				>
-					© OpenStreetMap contributors © CARTO
-				</a>{" "}
-				· z{zoom.toFixed(1)}
-			</div>
 		</div>
 	);
 }

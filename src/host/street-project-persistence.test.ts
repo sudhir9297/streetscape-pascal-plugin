@@ -266,6 +266,22 @@ test("rejects road bindings to containers and preserves future domain documents 
 	);
 });
 
+test("a history larger than one report saves each revision losslessly", async () => {
+	const { project, scene, projection, site } = await fixture();
+	const baseline = project.baselineRevisions[project.activeBaselineRevisionId]!;
+	baseline.resolutionEvidence = { retained: "mapped evidence ".repeat(2300000) };
+	const next = structuredClone(baseline);
+	next.id = "baseline-followup";
+	next.parentRevisionId = baseline.id;
+	project.baselineRevisions[next.id] = next;
+	expect(JSON.stringify(project).length).toBeGreaterThan(64 * 1024 * 1024);
+	const saved = prepareStreetProjectPersistence(scene, site.id, { project, projection, expectedRevision: null });
+	const restored = readStreetProjectFromSite({ ...site, metadata: saved.metadata })!;
+	expect(restored.project.baselineRevisions[baseline.id]!.resolutionEvidence).toEqual(baseline.resolutionEvidence);
+	expect(restored.project.baselineRevisions[next.id]!.resolutionEvidence).toEqual(next.resolutionEvidence);
+	expect(saved.sceneBytes).toBeLessThan(10 * 1024 * 1024);
+});
+
 test("large embedded evidence saves losslessly within the actual host byte limit", async () => {
 	const { project, scene, projection, site } = await fixture();
 	project.baselineRevisions[

@@ -30,6 +30,7 @@ import {
 } from "./osm-import-deduplication";
 import type { OsmImportResult } from "./osm-import";
 import { resolveMappedInventory } from "./osm-road-corridors";
+import { prepareImportedRoadTerrain } from "./osm-import-terrain";
 import {
 	createRoadSignNode,
 	RoadNetworkNode,
@@ -365,6 +366,32 @@ export function placeOsmImport(
 		});
 		update.push({ id: siteId, data: { metadata: prepared.metadata } });
 	}
+	if (expected.siteId) {
+		const site = scene.nodes[expected.siteId as AnyNodeId];
+		const level = scene.nodes[activeLevelId];
+		const building = level?.parentId ? scene.nodes[level.parentId as AnyNodeId] : undefined;
+		const pose = building as unknown as { position?: [number, number, number]; rotation?: [number, number, number] };
+		if ((pose?.rotation?.[0] ?? 0) !== 0 || (pose?.rotation?.[2] ?? 0) !== 0)
+			throw Error("Map terrain requires a building without pitch or roll.");
+		const ground = prepareImportedRoadTerrain(networks, {
+			position: pose?.position ?? [0, 0, 0],
+			rotationY: pose?.rotation?.[1] ?? 0,
+			displayLiftMeters: 0,
+		}, (site as unknown as { terrain?: unknown })?.terrain);
+		if (ground) {
+			const siteUpdate = update.find(item => item.id === expected.siteId);
+			const data = {
+				terrain: ground.terrain,
+				metadata: {
+					...(siteUpdate?.data.metadata ?? site?.metadata ?? {}) as Record<string, unknown>,
+					osmTerrainProjection: { basis: ground.basis, spacingMeters: ground.spacingMeters,
+						roadNodeIds: networks.map(node => node.id), acceptedAt },
+				},
+			};
+			if (siteUpdate) Object.assign(siteUpdate.data, data);
+			else update.push({ id: expected.siteId, data });
+		}
+	}
 	commitHostStreetChangeSet(
 		StreetApplicationChangeSet.parse({
 			format: "street-application-change-set",
@@ -398,9 +425,13 @@ export function captureOsmImportPreconditions(levelId: AnyNodeId) {
 export function getOsmImportSceneContext(
 	activeLevelId: AnyNodeId,
 ): OsmImportSceneContext {
+	const scene = useScene.getState();
+	const ownerId = scene.rootNodeIds.includes(activeLevelId) ? null : getImportOwnerSite(scene, activeLevelId);
+	const project = ownerId ? readStreetProjectFromSite(scene.nodes[ownerId as AnyNodeId])?.project : null;
+	const coordinateFrame = project?.siteFrameId ? project.siteFrames[project.siteFrameId] : undefined;
 	const networks: RoadNetworkNode[] = [];
 	const featureSourceIds = new Set<string>();
-	for (const candidate of Object.values(useScene.getState().nodes)) {
+	for (const candidate of Object.values(scene.nodes)) {
 		const identity = candidate as unknown as {
 			metadata?: unknown;
 			parentId?: string | null;
@@ -425,5 +456,5 @@ export function getOsmImportSceneContext(
 			);
 		}
 	}
-	return { featureSourceIds, networks };
+	return { featureSourceIds, networks, ...(coordinateFrame ? { coordinateFrame } : {}) };
 }

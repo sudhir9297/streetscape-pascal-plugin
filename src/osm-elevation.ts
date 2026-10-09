@@ -5,6 +5,7 @@ import type { GeoPoint, GeoBoundingBox } from "./domain/site-frame";
 export type { GeoPoint, GeoBoundingBox } from "./domain/site-frame";
 
 export const TERRAIN_TILE_ZOOM = 15;
+export const TERRAIN_TILE_TIMEOUT_MS = 12_000;
 const TERRAIN_TILE_SIZE = 256;
 export const DEFAULT_TERRAIN_SOURCE = TerrainSource.parse({
 	provider: "mapzen-aws",
@@ -26,6 +27,31 @@ export type TerrainTileLoader = (
 	y: number,
 	signal?: AbortSignal,
 ) => Promise<TerrainTile | null>;
+
+async function loadTileWithDeadline(
+	loader: TerrainTileLoader,
+	zoom: number,
+	x: number,
+	y: number,
+	signal: AbortSignal | undefined,
+	timeoutMs: number,
+): Promise<TerrainTile | null> {
+	const deadline = new AbortController();
+	const combined = signal ? AbortSignal.any([signal, deadline.signal]) : deadline.signal;
+	combined.throwIfAborted();
+	let onAbort: () => void = () => {};
+	const aborted = new Promise<never>((_, reject) => {
+		onAbort = () => reject(combined.reason);
+		combined.addEventListener("abort", onAbort, { once: true });
+	});
+	const timer = setTimeout(() => deadline.abort(new DOMException("Elevation tile request timed out.", "TimeoutError")), timeoutMs);
+	try {
+		return await Promise.race([loader(zoom, x, y, combined), aborted]);
+	} finally {
+		clearTimeout(timer);
+		combined.removeEventListener("abort", onAbort);
+	}
+}
 
 export function terrariumTileUrl(zoom: number, x: number, y: number): string {
 	return getElevationTileUrl(zoom, x, y);
@@ -124,6 +150,7 @@ export class TerrainSampler {
 			source?: import("./domain/terrain-evidence").TerrainSource;
 			now?: () => string;
 			tileUrl?: (zoom: number, x: number, y: number) => string | null;
+			tileTimeoutMs?: number;
 		} = {},
 	) {
 		this.source = TerrainSource.parse(
@@ -181,7 +208,7 @@ export class TerrainSampler {
 						let tile: TerrainTile | null = null,
 							reason: TerrainCoverage["tiles"][number]["reason"] = null;
 						try {
-							tile = await this.loadTile(this.zoom, x, y, signal);
+							tile = await loadTileWithDeadline(this.loadTile, this.zoom, x, y, signal, this.options.tileTimeoutMs ?? TERRAIN_TILE_TIMEOUT_MS);
 						} catch (error) {
 							signal?.throwIfAborted();
 							reason = "loader-error";

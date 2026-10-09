@@ -33,13 +33,16 @@ export function fitOsmJunctionCorners(graph: RoadNetworkGraph): void {
 				edge.startNodeId === junction.nodeId ? points[0]! : points.at(-1)!;
 			const toward =
 				edge.startNodeId === junction.nodeId ? points[1]! : points.at(-2)!;
-			// Leave a straight section between two junction patches, including their sidewalks.
+			// Share an approach only when both ends have junction patches. A
+			// clipped boundary or open end has no competing patch to reserve for.
 			const section = buildRoadCrossSection(style);
 			const sideWidth = Math.max(
 				section.sides.left.width,
 				section.sides.right.width,
 			);
-			available.set(edge.id, Math.max(0, length * 0.45 - sideWidth));
+			const oppositeId = edge.startNodeId === junction.nodeId ? edge.endNodeId : edge.startNodeId;
+			const ratio = graph.junctions[oppositeId] ? 0.45 : 0.9;
+			available.set(edge.id, Math.max(0, length * ratio - sideWidth));
 			return [
 				{
 					edgeId: edge.id,

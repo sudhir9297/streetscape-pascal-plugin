@@ -41,6 +41,32 @@ function meshCoversPlanPoint(
 }
 
 describe('road centerline geometry', () => {
+  test('mapped circular routes curve through their alignment vertices', () => {
+    const result = insertRoadSegment(createEmptyRoadGraph(), [10, 0, 0], [0, 0, 10])
+    const edge = Object.values(result.graph.edges)[0]!
+    edge.alignment = [[Math.SQRT1_2 * 10, 0, Math.SQRT1_2 * 10]]
+    for (const junction of ['circular', 'roundabout']) {
+      edge.osmSource = { wayId: 4217134, nodeIds: [1, 2, 3], tags: { highway: 'residential', junction } }
+      const points = sampleRoadEdgePoints(result.graph, edge)
+      expect(points.length).toBeGreaterThan(3)
+      expect(points[0]).toEqual([10, 0, 0])
+      expect(points.at(-1)).toEqual([0, 0, 10])
+      expect(points).toContainEqual(edge.alignment[0]!)
+    }
+  })
+
+  test('preserves the mapped Villa de la Grande Armée corner without spline bowing', () => {
+    // OSM way 51556901, node 1986828644, clipped to a 20 m selection.
+    const start: [number, number, number] = [-17.674905955082764, 0, -9.359364266817472]
+    const end: [number, number, number] = [16.70642031746524, 0, -10.995249891484258]
+    const result = insertRoadSegment(createEmptyRoadGraph(), start, end)
+    const edge = Object.values(result.graph.edges)[0]!
+    edge.alignment = [[0, 0, 0]]
+    edge.osmSource = { wayId: 51556901, nodeIds: [659284020, 1986828644, 659284021], tags: { highway: 'service' } }
+    expect(sampleRoadEdgePoints(result.graph, edge)).toEqual([start, [0, 0, 0], end])
+    expect(sampleRoadEdgePoints(result.graph, edge, 100)).toEqual([start, [0, 0, 0], end])
+  })
+
   test('points continuation descriptors outward from only the two open ends', () => {
     const first = insertRoadSegment(createEmptyRoadGraph(), [0, 0, 0], [10, 0, 0])
     const second = insertRoadSegment(first.graph, [10, 0, 0], [10, 0, 10])

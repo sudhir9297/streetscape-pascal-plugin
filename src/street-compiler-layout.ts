@@ -56,25 +56,7 @@ export function compileStreetLayout(node: RoadNetworkNode, profiles=buildRoadTra
 		};
 	});
 	const renderedJunctionSurfaces = (() => {
-		const mergedAsphalt = mergeCollidingJunctionSurfaces(
-			junctionSurfaces.map((junction) => ({
-				center: junction.graphNode.position,
-				mergeKey: Object.values(node.edges)
-					.filter(
-						(edge) =>
-							edge.startNodeId === junction.graphNode.id ||
-							edge.endNodeId === junction.graphNode.id,
-					)
-					.map(
-						(edge) =>
-							`${edge.osmVertical?.bridge === true ? "bridge" : edge.osmVertical?.tunnel === true ? "tunnel" : "at-grade"}:${edge.osmVertical?.layer ?? 0}`,
-					)
-					.sort()
-					.join("|"),
-				solution: junction.solution,
-			})),
-		);
-		return junctionSurfaces.map((junction, junctionIndex) => {
+		const fitted = junctionSurfaces.map((junction) => {
 			if (junction.manualBoundary)
 				return { ...junction, bandSurfaces: undefined };
 			const mouths = Object.fromEntries(
@@ -103,11 +85,30 @@ export function compileStreetLayout(node: RoadNetworkNode, profiles=buildRoadTra
 				solution: {
 					...junction.solution,
 					...seams.asphalt,
-					...mergedAsphalt[junctionIndex],
 				},
 				bandSurfaces: seams.bands,
 			};
 		});
+		const mergedAsphalt = mergeCollidingJunctionSurfaces(
+			fitted.map((junction) => ({
+				center: junction.graphNode.position,
+				mergeKey: Object.values(node.edges)
+					.filter(
+						(edge) =>
+							edge.startNodeId === junction.graphNode.id ||
+							edge.endNodeId === junction.graphNode.id,
+					)
+					.map(
+						(edge) =>
+							`${edge.osmVertical?.bridge === true ? "bridge" : edge.osmVertical?.tunnel === true ? "tunnel" : "at-grade"}:${edge.osmVertical?.layer ?? 0}`,
+					)
+					.sort()
+					.join("|"),
+				solution: junction.solution,
+				surface: junction.solution,
+			})),
+		);
+		return fitted.map((junction, index) => junction.manualBoundary ? junction : ({ ...junction, solution: { ...junction.solution, ...mergedAsphalt[index] } }))
 	})();
 	return {
 		junctionSurfaces,

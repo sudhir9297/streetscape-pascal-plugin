@@ -109,9 +109,9 @@ import {
 	type OsmPointFeature,
 } from "./osm-point-assets";
 
-export const MIN_IMPORT_RADIUS_M = 50;
+export const MIN_IMPORT_RADIUS_M = 10;
 export const MAX_IMPORT_RADIUS_M = 600;
-export const DEFAULT_IMPORT_RADIUS_M = 250;
+export const DEFAULT_IMPORT_RADIUS_M = 50;
 export const MAX_IMPORT_SEGMENTS = 3000;
 export const IMPORT_SIMPLIFY_TOLERANCE_M = 0.5;
 /** Components shorter than this are edge-of-circle fragments and are dropped. */
@@ -1084,7 +1084,7 @@ function assembleImportGraphs(
 
 // --- orchestrator --------------------------------------------------------------
 
-export type OsmImportPhase = "streets" | "building";
+export type OsmImportPhase = "streets" | "elevation" | "building";
 
 type OsmOperationOptions = {
 	onPhase?: (phase: OsmImportPhase) => void;
@@ -1370,8 +1370,10 @@ export async function completeOsmStreetImport(
 	let elevationAt: ((x: number, z: number) => number) | undefined;
 	let hasElevationAt: (x: number, z: number) => boolean = () => false;
 	if (loadTerrain) {
+		options.onPhase?.("elevation");
 		const sampler = options.terrainSampler ?? new TerrainSampler();
 		await sampler.prefetch(computeBoundingBox(center, radius), options.signal);
+		options.onPhase?.("building");
 		failedElevationTiles = sampler.failedTiles;
 		terrainSource = sampler.source ?? {
 			provider: "injected",

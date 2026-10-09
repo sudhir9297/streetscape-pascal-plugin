@@ -3,6 +3,7 @@ import { canonicalSourceJson } from "../source/osm-source-snapshot";
 import { z } from "zod";
 import { SiteNode } from "@pascal-app/core/schema";
 import {
+	assertSupportedStreetProjectVersion,
 	parseStreetProject,
 	StreetProject,
 	type StreetProject as StreetProjectDocument,
@@ -115,7 +116,18 @@ export function readStreetProjectFromSite(
 ): PersistedStreetProject | null {
 	const site = SiteNode.parse(input);
 	if (!Object.hasOwn(site.metadata, STREET_PROJECT_METADATA_KEY)) return null;
-	const value = decodeStoredReport(site.metadata[STREET_PROJECT_METADATA_KEY]);
+	let value = decodeStoredReport(site.metadata[STREET_PROJECT_METADATA_KEY]);
+	// Histories can exceed one report's decoded limit even when each revision
+	// and the saved scene remain within their limits. Decode revisions separately.
+	if (value && typeof value === "object" && "project" in value) {
+		const project = value.project;
+		if (project && typeof project === "object" && "baselineRevisions" in project &&
+			project.baselineRevisions && typeof project.baselineRevisions === "object") {
+			value = { ...value, project: { ...project, baselineRevisions: Object.fromEntries(
+				Object.entries(project.baselineRevisions).map(([id, revision]) => [id, decodeStoredReport(revision)]),
+			) } };
+		}
+	}
 	if (
 		value &&
 		typeof value === "object" &&
@@ -126,7 +138,7 @@ export function readStreetProjectFromSite(
 			`Unsupported Streetscape host document version: ${String(value.schemaVersion)}`,
 		);
 	if (value && typeof value === "object" && "project" in value)
-		parseStreetProject(value.project);
+		assertSupportedStreetProjectVersion(value.project);
 	return PersistedStreetProject.parse(value);
 }
 
@@ -221,9 +233,19 @@ export function prepareStreetProjectPersistence(
 		throw new Error(
 			`Invalid projection reference: ${problems[0]!.nodeId} (${problems[0]!.status})`,
 		);
+	let storedDocument: string;
+	try {
+		storedDocument = encodeStoredReport(document);
+	} catch (error) {
+		if (!(error instanceof Error) || error.message !== "Report exceeds decoded byte limit") throw error;
+		storedDocument = encodeStoredReport({ ...document, project: { ...document.project,
+			baselineRevisions: Object.fromEntries(Object.entries(document.project.baselineRevisions)
+				.map(([id, revision]) => [id, JSON.parse(encodeStoredReport(revision))])),
+		} });
+	}
 	const metadata = {
 		...owner.metadata,
-		[STREET_PROJECT_METADATA_KEY]: JSON.parse(encodeStoredReport(document)),
+		[STREET_PROJECT_METADATA_KEY]: JSON.parse(storedDocument),
 	};
 	// Measure the entire outgoing graph, not just the document; never silently truncate.
 	const sceneBytes = new TextEncoder().encode(

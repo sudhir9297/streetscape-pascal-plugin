@@ -49,6 +49,29 @@ describe('terrariumTileUrl', () => {
 describe('TerrainSampler', () => {
 	const bbox = { south: -0.002, west: -0.002, north: 0.002, east: 0.002 }
 
+	test('a stalled elevation loader finishes with explicit unavailable coverage', async () => {
+		const signals: AbortSignal[] = []
+		const sampler = new TerrainSampler(15, (_zoom, _x, _y, signal) => {
+			signals.push(signal!)
+			return new Promise(() => {})
+		}, { tileTimeoutMs: 10 })
+		await sampler.prefetch(bbox)
+		expect(sampler.failedTiles).toBeGreaterThan(0)
+		expect(sampler.successfulTiles).toBe(0)
+		expect(sampler.hasElevationAt({ lat: 0, lon: 0 })).toBe(false)
+		expect(signals.every(signal => signal.aborted)).toBe(true)
+		expect(sampler.getCoverage(bbox).tiles.every(tile => tile.status === 'unavailable' && tile.reason === 'loader-error')).toBe(true)
+	})
+
+	test('cancels a stalled loader even if it ignores the abort signal', async () => {
+		const controller = new AbortController()
+		const sampler = new TerrainSampler(15, () => new Promise(() => {}))
+		const loading = sampler.prefetch(bbox, controller.signal)
+		controller.abort()
+		await expect(loading).rejects.toThrow()
+		expect(sampler.failedTiles).toBe(0)
+	})
+
 	test('samples prefetched tiles', async () => {
 		const sampler = new TerrainSampler(15, async () => ({
 			width: 2,
@@ -100,8 +123,9 @@ describe('TerrainSampler', () => {
 	test('passes cancellation to tile loaders', async () => {
 		const controller = new AbortController()
 		const sampler = new TerrainSampler(15, async (_zoom, _x, _y, signal) => {
-			expect(signal).toBe(controller.signal)
+			expect(signal?.aborted).toBe(false)
 			controller.abort()
+			expect(signal?.aborted).toBe(true)
 			signal?.throwIfAborted()
 			return null
 		})

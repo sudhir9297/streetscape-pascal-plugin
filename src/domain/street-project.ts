@@ -522,15 +522,7 @@ export const StreetProject = z
 export type StreetProject = z.infer<typeof StreetProject>;
 
 /** Parse an object or JSON without fetching sources or writing host scene state. */
-export function parseStreetProject(input: unknown): StreetProject {
-	let value = input;
-	if (typeof input === "string") {
-		try {
-			value = JSON.parse(input);
-		} catch {
-			throw new Error("Street project is not valid JSON.");
-		}
-	}
+export function assertSupportedStreetProjectVersion(value: unknown): void {
 	if (
 		value &&
 		typeof value === "object" &&
@@ -546,6 +538,18 @@ export function parseStreetProject(input: unknown): StreetProject {
 			);
 		}
 	}
+}
+
+export function parseStreetProject(input: unknown): StreetProject {
+	let value = input;
+	if (typeof input === "string") {
+		try {
+			value = JSON.parse(input);
+		} catch {
+			throw new Error("Street project is not valid JSON.");
+		}
+	}
+	assertSupportedStreetProjectVersion(value);
 	return StreetProject.parse(value);
 }
 
